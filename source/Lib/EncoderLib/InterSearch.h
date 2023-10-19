@@ -174,6 +174,11 @@ protected:
   bool            m_clipMvInSubPic;
 
 public:
+
+#if MSMVF_GLOBAL
+  void InterSearch::fillMVfield(int dim_mf, PredictionUnit* pu, Partitioner& partitioner, int aaiMvpIdx, const AMVPInfo& amvpinfo);
+#endif
+
   InterSearch();
   virtual ~InterSearch();
 
@@ -446,6 +451,9 @@ protected:
                                     Distortion&           ruiCost,
                                     const AMVPInfo&       amvpInfo,
                                     bool                  bBi = false
+#if MSMVF_GLOBAL
+                                    , bool                  MvField = false
+#endif
                                   );
 
   void xTZSearch                  ( const PredictionUnit& pu,
@@ -457,6 +465,9 @@ protected:
                                     const Mv* const       pIntegerMv2Nx2NPred,
                                     const bool            bExtendedSettings,
                                     const bool            bFastSettings = false
+#if MSMVF_GLOBAL
+                                  , bool                  getmvfield = false
+#endif
                                   );
 
   void xTZSearchSelective         ( const PredictionUnit& pu,
@@ -473,6 +484,9 @@ protected:
                                     const int             iSrchRng,
                                     SearchRange&          sr
                                   , IntTZSearchStruct &  cStruct
+#if MSMVF_GLOBAL
+                                   , bool                  mf = false
+#endif
                                   );
 
   void xPatternSearchFast         ( const PredictionUnit& pu,
@@ -482,6 +496,9 @@ protected:
                                     Mv&                   rcMv,
                                     Distortion&           ruiSAD,
                                     const Mv* const       pIntegerMv2Nx2NPred
+#if MSMVF_GLOBAL
+                                  , bool                  getmvfield = false
+#endif
                                   );
 
   void xPatternSearch             ( IntTZSearchStruct&    cStruct,

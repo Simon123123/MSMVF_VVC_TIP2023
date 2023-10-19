@@ -510,8 +510,14 @@ void writeBlockStatisticsHeader(const SPS *sps)
 void getAndStoreBlockStatistics(const CodingStructure& cs, const UnitArea& ctuArea)
 {
   // two differemt behaviors, depending on which information is needed
+  
+#if MSMVF_GLOBAL && MSMVF_DATASET
+  bool writeAll = false;
+  bool writeCoded = true;
+#else
   bool writeAll =   g_trace_ctx->isChannelActive( D_BLOCK_STATISTICS_ALL);
   bool writeCoded =   g_trace_ctx->isChannelActive( D_BLOCK_STATISTICS_CODED);
+#endif
 
   CHECK(writeAll && writeCoded, "Either used D_BLOCK_STATISTICS_ALL or D_BLOCK_STATISTICS_CODED. Not both at once!")
 

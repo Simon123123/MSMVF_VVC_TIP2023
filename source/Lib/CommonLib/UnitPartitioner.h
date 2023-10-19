@@ -122,6 +122,19 @@ public:
   Position currQgPos;
   Position currQgChromaPos;
 
+#if MSMVF_GLOBAL
+
+  std::vector<float> qt_map;
+  std::vector<std::vector<float>> mt_map;
+
+  std::vector<std::vector<float>> mv_field_32x32;
+  std::vector<std::vector<float>> mv_field_16x16;
+  std::vector<std::vector<float>> mv_field_8x8;
+  std::vector<std::vector<float>> mv_field_4x4;
+  std::vector<std::vector<float>> mv_field_2x2;
+
+#endif
+
   unsigned currImplicitBtDepth;
   ChannelType chType;
   TreeType treeType;
@@ -195,6 +208,19 @@ public:
     currBtDepth  = _initialState.currBtDepth;
     currMtDepth  = _initialState.currMtDepth;
     chType       = _initialState.chType;
+
+#if MSMVF_GLOBAL
+
+    qt_map = _initialState.qt_map;
+
+    mv_field_32x32 = _initialState.mv_field_32x32;
+    mv_field_16x16 = _initialState.mv_field_16x16;
+    mv_field_8x8 =  _initialState.mv_field_8x8;
+    mv_field_4x4 =  _initialState.mv_field_4x4;
+    mv_field_2x2 =  _initialState.mv_field_2x2;
+
+#endif
+
 #if _DEBUG
     m_currArea   = _initialState.currArea();
 #endif

@@ -236,6 +236,14 @@ void EncApp::xInitLibCfg()
     m_cEncLib.setSubProfile(i, m_subProfile[i]);
   }
 
+#if MSMVF_GLOBAL && !MSMVF_DATASET
+
+  //m_cEncLib.setThresholdQT                                         (m_threshold_qt);
+  m_cEncLib.setThresholdMT                                         (m_threshold_mt);
+  m_cEncLib.setSkipQT                                              (m_skip_qt);
+  m_cEncLib.setPathCNN                                             (m_path_cnn);
+#endif
+
   m_cEncLib.setPrintMSEBasedSequencePSNR                         ( m_printMSEBasedSequencePSNR);
   m_cEncLib.setPrintFrameMSE                                     ( m_printFrameMSE);
   m_cEncLib.setPrintHexPsnr(m_printHexPsnr);

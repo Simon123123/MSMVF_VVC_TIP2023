@@ -1224,30 +1224,172 @@ void EncModeCtrlMTnoRQT::initCULevel( Partitioner &partitioner, const CodingStru
   //////////////////////////////////////////////////////////////////////////
   // Add unit split modes
 
+#if MSMVF_GLOBAL && !MSMVF_DATASET
+  bool useConst = (partitioner.qt_map.size() != 0 && partitioner.chType == CHANNEL_TYPE_LUMA);
+  bool keepQT = m_pcEncCfg->getSkipQT() > 0;
+  //bool keepQT = false;
+
+  //float thq = m_pcEncCfg->getThresholdQT();
+  float thm = m_pcEncCfg->getThresholdMT();
+
+  float aver_qt_depth = 0;
+  int w_cu = partitioner.currArea().lwidth();
+  int h_cu = partitioner.currArea().lheight();
+
+  bool use_qt_map = useConst && ((w_cu == 64 && h_cu == 64 && partitioner.currQtDepth == 1) || (w_cu == 32 && h_cu == 32 && partitioner.currQtDepth == 2) || (w_cu == 16 && h_cu == 16 && partitioner.currQtDepth == 3));
+
+  if (use_qt_map)
+  {
+    int ref_pos_x = (int)(cs.area[0].x % 128 / 8);
+    int ref_pos_y = (int)(cs.area[0].y % 128 / 8);
+    int start_index = ref_pos_x + ref_pos_y * 16;
+
+    int dx = (partitioner.currArea().lwidth() + 4) / 8;
+    int dy = (partitioner.currArea().lheight() + 4) / 8;
+
+    int num_blocks = dx * dy;
+
+    for (int i = 0; i < dy; i++) {
+      for (int j = start_index + i * 16; j < start_index + i * 16 + dx; j++) {
+        aver_qt_depth += (float)partitioner.qt_map[j] / (float)num_blocks;
+      }
+    }
+  }
+
+    float aver_qt_depth_r = roundf(aver_qt_depth);
+
+    //bool do_qt_split = use_qt_map && aver_qt_depth_r > (partitioner.currQtDepth + thq)  && partitioner.canSplit( CU_QUAD_SPLIT, cs ) && tryModeMaster({ ETM_SPLIT_QT, ETO_STANDARD, maxQP }, cs, partitioner);
+    bool do_qt_split = use_qt_map && (aver_qt_depth_r > partitioner.currQtDepth) && partitioner.canSplit( CU_QUAD_SPLIT, cs ) && tryModeMaster({ ETM_SPLIT_QT, ETO_STANDARD, maxQP }, cs, partitioner);
+
+    //bool do_on_mtdepth = false;
+
+    //do_on_mtdepth = (do_on_mtdepth || partitioner.currMtDepth == 0);
+
+    //do_on_mtdepth = (do_on_mtdepth || partitioner.currMtDepth == 1);
+
+    //do_on_mtdepth = (do_on_mtdepth || partitioner.currMtDepth == 2);
+
+    bool do_on_mtdepth = partitioner.currMtDepth <= 2;
+
+    bool use_mt_map = useConst && (!do_qt_split) && do_on_mtdepth;
+
+  float mt_decision[5] = {0.0};
+  bool check_splits[5] = {true, false, false, false, false};
+
+    if (use_mt_map){
+
+    int ref_pos_x = (int)(cs.area[0].x % 128 / 4);
+    int ref_pos_y = (int)(cs.area[0].y % 128 / 4);
+    int start_index = ref_pos_x + ref_pos_y * 32;
+
+    int dx = partitioner.currArea().lwidth() / 4;
+    int dy = partitioner.currArea().lheight() / 4;
+    int num_blocks = dx * dy;
+    float inc_dis = 1.0f / float(num_blocks);
+
+    for(int i = 0; i < dy; i++){
+      for(int j = start_index + i * 32; j < start_index + i * 32 + dx; j++){
+
+        int ind = 5 * j; 
+        
+        mt_decision[0] += partitioner.mt_map[partitioner.currMtDepth][ind + 2] * inc_dis;
+        mt_decision[1] += partitioner.mt_map[partitioner.currMtDepth][ind + 3] * inc_dis;
+        mt_decision[2] += partitioner.mt_map[partitioner.currMtDepth][ind + 1] * inc_dis;
+        mt_decision[3] += partitioner.mt_map[partitioner.currMtDepth][ind + 4] * inc_dis;
+        mt_decision[4] += partitioner.mt_map[partitioner.currMtDepth][ind] * inc_dis;
+      }
+    }
+
+    bool shortcut_splits[5] = {true, false, false, false, false};
+
+    for( int qp = maxQP; qp >= minQP; qp-- ){
+      shortcut_splits[4] |= tryModeMaster({ ETM_SPLIT_TT_V, ETO_STANDARD, qp }, cs, partitioner);
+      shortcut_splits[3] |= tryModeMaster({ ETM_SPLIT_TT_H, ETO_STANDARD, qp }, cs, partitioner);
+    }
+
+    for( int qp = minQP; qp >= minQP; qp-- ){
+      shortcut_splits[2] |= tryModeMaster({ ETM_SPLIT_BT_V, ETO_STANDARD, qp }, cs, partitioner);
+      shortcut_splits[1] |= tryModeMaster({ ETM_SPLIT_BT_H, ETO_STANDARD, qp }, cs, partitioner);
+    }
+
+    shortcut_splits[1] &= partitioner.canSplit( CU_HORZ_SPLIT, cs );
+    shortcut_splits[2] &= partitioner.canSplit( CU_VERT_SPLIT, cs );
+    shortcut_splits[3] &= partitioner.canSplit( CU_TRIH_SPLIT, cs );
+    shortcut_splits[4] &= partitioner.canSplit( CU_TRIV_SPLIT, cs );
+
+    for (int i = 1; i < 5; i++)
+      check_splits[i] = (shortcut_splits[i] && mt_decision[i] >= thm);
+
+    { 
+      if (!(check_splits[1] || check_splits[2] || check_splits[3] || check_splits[4])){
+      float maxproba = 0.0f;
+      int pos = 0;
+      for (int i = 1; i < 5; i++){
+
+        if (shortcut_splits[i] && mt_decision[i] > maxproba){
+          pos = i;
+          maxproba = mt_decision[i];    
+        }
+      }
+      check_splits[pos] = true;
+      }
+    }
+
+  }
+
+#endif
+
   if( !cuECtx.get<bool>( QT_BEFORE_BT ) )
   {
+
+#if MSMVF_GLOBAL && !MSMVF_DATASET
+    //if (roundf(aver_qt_depth + thq) > (partitioner.currQtDepth + thq)  || !useConst || keepQT){
+    if (roundf(aver_qt_depth) > partitioner.currQtDepth || !useConst || keepQT){
+#endif
+
     for( int qp = maxQP; qp >= minQP; qp-- )
     {
       m_ComprCUCtxList.back().testModes.push_back( { ETM_SPLIT_QT, ETO_STANDARD, qp } );
     }
+
+#if MSMVF_GLOBAL && !MSMVF_DATASET
+    }
+#endif
+
   }
 
   if( partitioner.canSplit( CU_TRIV_SPLIT, cs ) )
   {
     // add split modes
+#if MSMVF_GLOBAL && !MSMVF_DATASET
+    //if ((use_mt_map && check_splits[4]) || !useConst || (!do_qt_split && !do_on_mtdepth)){
+    if ((use_mt_map && check_splits[4]) || !useConst){
+#endif
     for( int qp = maxQP; qp >= minQP; qp-- )
     {
       m_ComprCUCtxList.back().testModes.push_back( { ETM_SPLIT_TT_V, ETO_STANDARD, qp } );
     }
+#if MSMVF_GLOBAL && !MSMVF_DATASET
+    }
+#endif
   }
 
   if( partitioner.canSplit( CU_TRIH_SPLIT, cs ) )
   {
     // add split modes
+
+#if MSMVF_GLOBAL && !MSMVF_DATASET
+    //if ((use_mt_map && check_splits[3]) || !useConst || (!do_qt_split && !do_on_mtdepth)){
+    if ((use_mt_map && check_splits[3]) || !useConst){
+#endif
     for( int qp = maxQP; qp >= minQP; qp-- )
     {
       m_ComprCUCtxList.back().testModes.push_back( { ETM_SPLIT_TT_H, ETO_STANDARD, qp } );
     }
+#if MSMVF_GLOBAL && !MSMVF_DATASET
+    }
+#endif
+
   }
 
   int minQPq = minQP;
@@ -1256,11 +1398,22 @@ void EncModeCtrlMTnoRQT::initCULevel( Partitioner &partitioner, const CodingStru
   if( partitioner.canSplit( CU_VERT_SPLIT, cs ) )
   {
     // add split modes
+
+#if MSMVF_GLOBAL && !MSMVF_DATASET
+    //if ((use_mt_map && check_splits[2]) || !useConst || (!do_qt_split && !do_on_mtdepth)){
+    if ((use_mt_map && check_splits[2]) || !useConst ){
+#endif
+
     for( int qp = maxQP; qp >= minQP; qp-- )
     {
       m_ComprCUCtxList.back().testModes.push_back( { ETM_SPLIT_BT_V, ETO_STANDARD, qp } );
     }
     m_ComprCUCtxList.back().set( DID_VERT_SPLIT, true );
+
+#if MSMVF_GLOBAL && !MSMVF_DATASET
+    }
+#endif
+
   }
   else
   {
@@ -1269,12 +1422,23 @@ void EncModeCtrlMTnoRQT::initCULevel( Partitioner &partitioner, const CodingStru
 
   if( partitioner.canSplit( CU_HORZ_SPLIT, cs ) )
   {
+
+#if MSMVF_GLOBAL && !MSMVF_DATASET
+    //if ((use_mt_map && check_splits[1]) || !useConst || (!do_qt_split && !do_on_mtdepth)){
+    if ((use_mt_map && check_splits[1]) || !useConst){
+#endif
+
     // add split modes
     for( int qp = maxQP; qp >= minQP; qp-- )
     {
       m_ComprCUCtxList.back().testModes.push_back( { ETM_SPLIT_BT_H, ETO_STANDARD, qp } );
     }
     m_ComprCUCtxList.back().set( DID_HORZ_SPLIT, true );
+
+#if MSMVF_GLOBAL && !MSMVF_DATASET
+    }
+#endif  
+
   }
   else
   {
@@ -1283,10 +1447,20 @@ void EncModeCtrlMTnoRQT::initCULevel( Partitioner &partitioner, const CodingStru
 
   if( cuECtx.get<bool>( QT_BEFORE_BT ) )
   {
+
+#if MSMVF_GLOBAL && !MSMVF_DATASET
+    //if (roundf(aver_qt_depth + thq) > (partitioner.currQtDepth + thq) || !useConst || keepQT){ 
+    if (roundf(aver_qt_depth) > partitioner.currQtDepth || !useConst || keepQT){ 
+#endif
+
     for( int qp = maxQPq; qp >= minQPq; qp-- )
     {
       m_ComprCUCtxList.back().testModes.push_back( { ETM_SPLIT_QT, ETO_STANDARD, qp } );
     }
+#if MSMVF_GLOBAL && !MSMVF_DATASET
+  }
+#endif
+
   }
 
   m_ComprCUCtxList.back().testModes.push_back( { ETM_POST_DONT_SPLIT } );
@@ -1297,6 +1471,14 @@ void EncModeCtrlMTnoRQT::initCULevel( Partitioner &partitioner, const CodingStru
 
   //////////////////////////////////////////////////////////////////////////
   // Add unit coding modes: Intra, InterME, InterMerge ...
+
+#if MSMVF_GLOBAL && !MSMVF_DATASET
+  if (m_ComprCUCtxList.back().testModes.size() != 0)
+  {
+    if (m_ComprCUCtxList.back().testModes.back().type == ETM_POST_DONT_SPLIT)
+    {
+#endif
+
   bool tryIntraRdo = true;
   bool tryInterRdo = true;
   bool tryIBCRdo   = true;
@@ -1398,6 +1580,11 @@ void EncModeCtrlMTnoRQT::initCULevel( Partitioner &partitioner, const CodingStru
       }
     }
   }
+
+#if MSMVF_GLOBAL && !MSMVF_DATASET
+    }
+  }
+#endif 
 
   // ensure to skip unprobable modes
   if( !tryModeMaster( m_ComprCUCtxList.back().testModes.back(), cs, partitioner ) )

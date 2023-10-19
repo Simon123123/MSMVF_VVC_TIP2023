@@ -731,6 +731,15 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
   ("InputPathPrefix,-ipp",                            inputPathPrefix,                             string(""), "pathname to prepend to input filename")
   ("BitstreamFile,b",                                 m_bitstreamFileName,                         string(""), "Bitstream output file name")
   ("ReconFile,o",                                     m_reconFileName,                             string(""), "Reconstructed YUV output file name")
+
+#if MSMVF_GLOBAL && !MSMVF_DATASET  
+  //("ThresholdQT,-thq",                                    m_threshold_qt,                             0.0f, "The threshold for the QT depth related partition acceleration")
+  ("ThresholdMT,-thm",                                    m_threshold_mt,                             0.2f, "The threshold for the MT depth related partition acceleration")
+  ("QTAcceleration,-skipqt",                              m_skip_qt,                                     1,    "Decide whether we should skip unnecessary QT splits")
+  ("CnnModel,-cnn",                                       m_path_cnn,                                string(""), "Location of the trained CNN")
+
+#endif    
+
   ("SourceWidth,-wdt",                                m_iSourceWidth,                                       0, "Source picture width")
   ("SourceHeight,-hgt",                               m_iSourceHeight,                                      0, "Source picture height")
   ("InputBitDepth",                                   m_inputBitDepth[CHANNEL_TYPE_LUMA],                   8, "Bit-depth of input file")

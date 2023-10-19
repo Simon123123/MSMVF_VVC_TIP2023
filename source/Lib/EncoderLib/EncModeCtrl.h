@@ -332,6 +332,10 @@ public:
 
   const ComprCUCtx& getComprCUCtx   () { CHECK( m_ComprCUCtxList.empty(), "Accessing empty list!"); return m_ComprCUCtxList.back(); }
 
+#if MSMVF_GLOBAL && !MSMVF_DATASET
+  ComprCUCtx& getComprCUCtx_nonconst() { CHECK(m_ComprCUCtxList.empty(), "Accessing empty list!"); return m_ComprCUCtxList.back(); }
+#endif
+
 #if SHARP_LUMA_DELTA_QP
   void                  initLumaDeltaQpLUT();
   int                   calculateLumaDQP  ( const CPelBuf& rcOrg );

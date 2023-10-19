@@ -159,6 +159,18 @@ void Partitioner::copyState( const Partitioner& other )
   currImplicitBtDepth
               = other.currImplicitBtDepth;
   chType      = other.chType;
+
+#if MSMVF_GLOBAL
+  qt_map = other.qt_map;
+
+  mv_field_32x32 = other.mv_field_32x32;
+  mv_field_16x16 = other.mv_field_16x16;
+  mv_field_8x8 = other.mv_field_8x8;
+  mv_field_4x4 = other.mv_field_4x4;
+  mv_field_2x2 = other.mv_field_2x2;
+
+#endif
+
 #ifdef _DEBUG
   m_currArea  = other.m_currArea;
 #endif

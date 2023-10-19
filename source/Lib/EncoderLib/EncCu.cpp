@@ -247,6 +247,12 @@ void EncCu::init( EncLib* pcEncLib, const SPS& sps PARL_PARAM( const int tId ) )
   m_modeCtrl->setInterSearch(m_pcInterSearch);
   m_pcIntraSearch->setModeCtrl( m_modeCtrl );
 
+
+#if MSMVF_GLOBAL && !MSMVF_DATASET
+  std::string cnn_path = pcEncLib->getPathCNN();
+  m_cnn_partition = fdeep::load_model(cnn_path, false);
+#endif
+
 }
 
 // ====================================================================================================================
@@ -527,6 +533,49 @@ bool EncCu::xCheckBestMode( CodingStructure *&tempCS, CodingStructure *&bestCS, 
 
 }
 
+
+#if MSMVF_GLOBAL && !MSMVF_DATASET
+bool isQTsplit(EncTestMode m) {
+  return (m.type == ETM_SPLIT_QT);
+}
+
+bool isNotQTsplit(EncTestMode m) {
+  return ((m.type != ETM_SPLIT_QT && m.type != ETM_INTER_ME) || (m.opts != 0 && m.type == ETM_INTER_ME));
+}
+
+bool isBHsplit(EncTestMode m) {
+  return (m.type == ETM_SPLIT_BT_H);
+}
+
+bool isBVsplit(EncTestMode m) {
+  return (m.type == ETM_SPLIT_BT_V);
+}
+
+void setMVField(int dim_mf, const Partitioner* partitioner, fdeep::tensor *mv_field_in){
+
+  const std::vector<std::vector<float>>* mvfields[5] = {&partitioner->mv_field_2x2, &partitioner->mv_field_4x4, &partitioner->mv_field_8x8, &partitioner->mv_field_16x16, &partitioner->mv_field_32x32};
+  
+  auto mvfield = *mvfields[int(std::log2(dim_mf) - 1)]; 
+
+  for (int posy = 0; posy < dim_mf; posy++){
+      for (int posx = 0; posx < dim_mf; posx++){
+
+        int ind = posy*32 + posx;
+        mv_field_in->set(0, 0, posy, posx, 0, mvfield[0][ind]);
+        mv_field_in->set(0, 0, posy, posx, 1, mvfield[1][ind]);
+        mv_field_in->set(0, 0, posy, posx, 2, mvfield[2][ind]);
+        mv_field_in->set(0, 0, posy, posx, 3, mvfield[3][ind]);
+        mv_field_in->set(0, 0, posy, posx, 4, mvfield[4][ind]);
+        mv_field_in->set(0, 0, posy, posx, 5, mvfield[5][ind]);
+      }     
+  }
+
+
+}
+
+#endif
+
+
 void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Partitioner& partitioner, double maxCostAllowed )
 {
   CHECK(maxCostAllowed < 0, "Wrong value of maxCostAllowed!");
@@ -742,6 +791,176 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
         xCheckRDCostInter( tempCS, bestCS, partitioner, currTestMode );
         tempCS->bestCS = nullptr;
       }
+
+
+#if MSMVF_GLOBAL && !MSMVF_DATASET
+      if (partitioner.currArea().lwidth() == 128 && partitioner.currArea().lheight() == 128 && currTestMode.opts == 0 && partitioner.currBtDepth == 0 && partitioner.chType == CHANNEL_TYPE_LUMA)
+      {
+        CodingStructure* res_cs = m_bestModeUpdated ? bestCS : tempCS;
+        const CPelBuf& ori = res_cs->picture->getOrigBuf(partitioner.currArea().Y());
+        fdeep::tensor pixels_resi_in(fdeep::tensor_shape(128, 128, 2), 0.0f);
+
+
+        fdeep::tensor mv_field_in_32x32(fdeep::tensor_shape(32, 32, 6), 0.0f);
+        fdeep::tensor mv_field_in_16x16(fdeep::tensor_shape(16, 16, 6), 0.0f);
+        fdeep::tensor mv_field_in_8x8(fdeep::tensor_shape(8, 8, 6), 0.0f);
+        fdeep::tensor mv_field_in_4x4(fdeep::tensor_shape(4, 4, 6), 0.0f);
+        fdeep::tensor mv_field_in_2x2(fdeep::tensor_shape(2, 2, 6), 0.0f);
+
+        const AreaBuf<Pel> resi = res_cs->getResiBuf().bufs[0];
+
+        setMVField(32, &partitioner, &mv_field_in_32x32);
+        setMVField(16, &partitioner, &mv_field_in_16x16);
+        setMVField(8, &partitioner, &mv_field_in_8x8);
+        setMVField(4, &partitioner, &mv_field_in_4x4);
+        setMVField(2, &partitioner, &mv_field_in_2x2);
+
+      //for (int posy = 0; posy < 32; posy++){
+      //  for (int posx = 0; posx < 32; posx++){
+
+      //    int ind = posy*32 + posx;
+      //    mv_field_in_32x32.set(0, 0, posy, posx, 0, partitioner.mv_field[0][ind]);
+      //    mv_field_in_32x32.set(0, 0, posy, posx, 1, partitioner.mv_field[1][ind]);
+      //    mv_field_in_32x32.set(0, 0, posy, posx, 2, partitioner.mv_field[2][ind]);
+      //    mv_field_in_32x32.set(0, 0, posy, posx, 3, partitioner.mv_field[3][ind]);
+      //    mv_field_in_32x32.set(0, 0, posy, posx, 4, partitioner.mv_field[4][ind]);
+      //    mv_field_in_32x32.set(0, 0, posy, posx, 5, partitioner.mv_field[5][ind]);
+      //  }     
+      //}
+
+      //for (int posy = 0; posy < 16; posy++){
+      //  for (int posx = 0; posx < 16; posx++){
+
+      //    int ind = posy*16 + posx;
+      //    mv_field_in_16x16.set(0, 0, posy, posx, 0, partitioner.mv_field_16x16[0][ind]);
+      //    mv_field_in_16x16.set(0, 0, posy, posx, 1, partitioner.mv_field_16x16[1][ind]);
+      //    mv_field_in_16x16.set(0, 0, posy, posx, 2, partitioner.mv_field_16x16[2][ind]);
+      //    mv_field_in_16x16.set(0, 0, posy, posx, 3, partitioner.mv_field_16x16[3][ind]);
+      //    mv_field_in_16x16.set(0, 0, posy, posx, 4, partitioner.mv_field_16x16[4][ind]);
+      //    mv_field_in_16x16.set(0, 0, posy, posx, 5, partitioner.mv_field_16x16[5][ind]);
+      //  }     
+      //}
+
+
+      //for (int posy = 0; posy < 8; posy++){
+      //  for (int posx = 0; posx < 8; posx++){
+
+      //    int ind = posy*8 + posx;
+      //    mv_field_in_8x8.set(0, 0, posy, posx, 0, partitioner.mv_field_8x8[0][ind]);
+      //    mv_field_in_8x8.set(0, 0, posy, posx, 1, partitioner.mv_field_8x8[1][ind]);
+      //    mv_field_in_8x8.set(0, 0, posy, posx, 2, partitioner.mv_field_8x8[2][ind]);
+      //    mv_field_in_8x8.set(0, 0, posy, posx, 3, partitioner.mv_field_8x8[3][ind]);
+      //    mv_field_in_8x8.set(0, 0, posy, posx, 4, partitioner.mv_field_8x8[4][ind]);
+      //    mv_field_in_8x8.set(0, 0, posy, posx, 5, partitioner.mv_field_8x8[5][ind]);
+      //  }     
+      //}
+
+
+      //for (int posy = 0; posy < 4; posy++){
+      //  for (int posx = 0; posx < 4; posx++){
+
+      //    int ind = posy*4 + posx;
+      //    mv_field_in_4x4.set(0, 0, posy, posx, 0, partitioner.mv_field_4x4[0][ind]);
+      //    mv_field_in_4x4.set(0, 0, posy, posx, 1, partitioner.mv_field_4x4[1][ind]);
+      //    mv_field_in_4x4.set(0, 0, posy, posx, 2, partitioner.mv_field_4x4[2][ind]);
+      //    mv_field_in_4x4.set(0, 0, posy, posx, 3, partitioner.mv_field_4x4[3][ind]);
+      //    mv_field_in_4x4.set(0, 0, posy, posx, 4, partitioner.mv_field_4x4[4][ind]);
+      //    mv_field_in_4x4.set(0, 0, posy, posx, 5, partitioner.mv_field_4x4[5][ind]);
+
+      //  }     
+      //}
+
+      //for (int posy = 0; posy < 2; posy++){
+      //  for (int posx = 0; posx < 2; posx++){
+
+      //    int ind = posy*2 + posx;
+      //    mv_field_in_2x2.set(0, 0, posy, posx, 0, partitioner.mv_field_2x2[0][ind]);
+      //    mv_field_in_2x2.set(0, 0, posy, posx, 1, partitioner.mv_field_2x2[1][ind]);
+      //    mv_field_in_2x2.set(0, 0, posy, posx, 2, partitioner.mv_field_2x2[2][ind]);
+      //    mv_field_in_2x2.set(0, 0, posy, posx, 3, partitioner.mv_field_2x2[3][ind]);
+      //    mv_field_in_2x2.set(0, 0, posy, posx, 4, partitioner.mv_field_2x2[4][ind]);
+      //    mv_field_in_2x2.set(0, 0, posy, posx, 5, partitioner.mv_field_2x2[5][ind]);
+
+      //  }     
+      //}
+
+        for (int i = 0; i < 128; i++) {
+          for (int j = 0; j < 128; j++) {
+            pixels_resi_in.set(0, 0, i, j, 0, ori.at(j, i) / 1024.0f);
+            pixels_resi_in.set(0, 0, i, j, 1, resi.at(j, i) / 1024.0f);
+          }
+        }
+
+        fdeep::tensor qp_tempid_in = concatenate_tensors_depth(fdeep::tensors{ fdeep::tensor(fdeep::tensor_shape(32, 32, 1), res_cs->currQP[0] / 46.0f), fdeep::tensor(fdeep::tensor_shape(32, 32, 1), res_cs->picture->temporalId / 5.0f)});
+        auto res = m_cnn_partition.predict({pixels_resi_in, mv_field_in_32x32, mv_field_in_16x16, mv_field_in_8x8, mv_field_in_4x4, mv_field_in_2x2, qp_tempid_in});
+
+        partitioner.qt_map.resize(256);
+
+        std::copy(res[0].as_vector()->cbegin(), res[0].as_vector()->cend(), partitioner.qt_map.begin());
+        
+        partitioner.mt_map.resize(3, std::vector<float>(5*1024, 0.0f));
+
+        std::copy(res[1].as_vector()->cbegin(), res[1].as_vector()->cend(), partitioner.mt_map[0].begin()); 
+        std::copy(res[2].as_vector()->cbegin(), res[2].as_vector()->cend(), partitioner.mt_map[1].begin()); 
+        std::copy(res[3].as_vector()->cbegin(), res[3].as_vector()->cend(), partitioner.mt_map[2].begin()); 
+
+
+       //float thq = m_pcEncCfg->getThresholdQT();
+
+        int num_blocks = 256;
+        float aver_qt_depth = 0.0f;
+
+
+        for (int i = 0; i < 16; i++) {
+          for (int j = 0; j < 16; j++) {
+            aver_qt_depth += (float)partitioner.qt_map[j + i * 16] / (float)num_blocks;
+          }
+        }
+
+        //float aver_qt_depth_r = roundf(aver_qt_depth);
+        //bool ctu_qtsplit = aver_qt_depth_r > (0 + thq);
+        bool ctu_qtsplit =  roundf(aver_qt_depth) > 0;
+        float mt_decision[5] = {0.0f};
+
+        float inc_dis = 1.0f / (32*32);
+        
+        if(!ctu_qtsplit){
+
+          for(int i = 0; i < 32; i++){
+            for(int j = 0; j < 32; j++){
+
+              int ind = 5 * (i*32 + j); 
+              mt_decision[0] += partitioner.mt_map[partitioner.currMtDepth][ind + 2] * inc_dis;
+              mt_decision[1] += partitioner.mt_map[partitioner.currMtDepth][ind + 3] * inc_dis;
+              mt_decision[2] += partitioner.mt_map[partitioner.currMtDepth][ind + 1] * inc_dis;
+              mt_decision[3] += partitioner.mt_map[partitioner.currMtDepth][ind + 4] * inc_dis;
+              mt_decision[4] += partitioner.mt_map[partitioner.currMtDepth][ind] * inc_dis;
+            }
+          }
+        }
+
+        std::vector<EncTestMode>& mode_vec = m_modeCtrl->getComprCUCtx_nonconst().testModes;
+
+        if (ctu_qtsplit){
+
+          mode_vec.erase(remove_if(mode_vec.begin(), mode_vec.end(), isBVsplit), mode_vec.end());
+          mode_vec.erase(remove_if(mode_vec.begin(), mode_vec.end(), isBHsplit), mode_vec.end());
+        }else{
+
+        float thm = m_pcEncCfg->getThresholdMT();
+
+      if (mt_decision[1] < mt_decision[2] && mt_decision[1] < thm)
+        mode_vec.erase(remove_if(mode_vec.begin(), mode_vec.end(), isBHsplit), mode_vec.end());
+
+      if (mt_decision[2] < mt_decision[1] && mt_decision[2] < thm)
+        mode_vec.erase(remove_if(mode_vec.begin(), mode_vec.end(), isBVsplit), mode_vec.end());
+
+      //if(roundf(aver_qt_depth + thq) < (0 + thq))
+        mode_vec.erase(remove_if(mode_vec.begin(), mode_vec.end(), isQTsplit), mode_vec.end());
+        //}
+        }
+      }
+#endif
 
     }
     else if (currTestMode.type == ETM_HASH_INTER)
@@ -1319,7 +1538,9 @@ void EncCu::xCheckModeSplit(CodingStructure *&tempCS, CodingStructure *&bestCS, 
 
       if( bestSubCS->cost == MAX_DOUBLE )
       {
+#if !MSMVF_GLOBAL
         CHECK( split == CU_QUAD_SPLIT, "Split decision reusing cannot skip quad split" );
+#endif
         tempCS->cost = MAX_DOUBLE;
         tempCS->costDbOffset = 0;
         tempCS->useDbCost = m_pcEncCfg->getUseEncDbOpt();

@@ -58,6 +58,11 @@
 //! \ingroup EncoderLib
 //! \{
 
+
+#if MSMVF_GLOBAL && !MSMVF_DATASET
+#include "fdeep/fdeep.hpp"
+#endif
+
 class EncLib;
 class HLSWriter;
 class EncSlice;
@@ -214,6 +219,11 @@ private:
 #endif
   double                m_sbtCostSave[2];
 public:
+
+#if MSMVF_GLOBAL && !MSMVF_DATASET
+  fdeep::model m_cnn_partition;
+#endif
+
   /// copy parameters from encoder class
   void  init                ( EncLib* pcEncLib, const SPS& sps PARL_PARAM( const int jId = 0 ) );
 

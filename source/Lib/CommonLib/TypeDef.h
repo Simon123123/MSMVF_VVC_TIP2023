@@ -52,6 +52,14 @@
 
 // clang-format off
 //########### place macros to be removed in next cycle below this line ###############
+
+#define MSMVF_GLOBAL                                      1
+
+#if MSMVF_GLOBAL
+#define MSMVF_DATASET                                     0
+#endif   
+
+
 #define JVET_S0058_GCI                                    1 // no_mtt_constraint_flag and no_weightedpred_constraint_flag
 
 #define JVET_R0341_GCI                                    1 // JVET-R0341: on constraint flag for local chroma QP control
