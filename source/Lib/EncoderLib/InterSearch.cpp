@@ -53,6 +53,10 @@
 #include <math.h>
 #include <limits>
 
+#if MSMVF_4k
+#include <chrono>
+#endif
+
 
  //! \ingroup EncoderLib
  //! \{
@@ -83,12 +87,15 @@ static const Mv s_acMvRefineQ[9] =
   Mv(  1,  1 )  // 8
 };
 
-#if MSMVF_GLOBAL
+#if MSMVF_GLOBAL && !MSMVF_DATASET
+
 void InterSearch::fillMVfield(int dim_mf, PredictionUnit* pu, Partitioner& partitioner, int aaiMvpIdx, const AMVPInfo& amvpinfo){
 
   PredictionUnit  pu_mv = *pu;
   int mv_scale = 128 / dim_mf;
 
+  pu_mv.resizeTo (UnitArea(CHROMA_420, Area(0, 0, mv_scale, mv_scale)));
+  
   std::vector<std::vector<float>>* mvfields[5] = {&partitioner.mv_field_2x2, &partitioner.mv_field_4x4, &partitioner.mv_field_8x8, &partitioner.mv_field_16x16, &partitioner.mv_field_32x32};
   
   auto mvfield = *mvfields[int(std::log2(dim_mf) - 1)]; 
@@ -96,17 +103,18 @@ void InterSearch::fillMVfield(int dim_mf, PredictionUnit* pu, Partitioner& parti
   for (int posy = 0; posy < dim_mf; posy++){
     for (int posx = 0; posx < dim_mf; posx++){
       
+
       Distortion  uiCostTemp = 0;
-      uint32_t    uiBitsTemp = 0;
+      uint32_t    uiBitsTemp = 0;    
       Mv mv_mf = Mv(0, 0);
       Mv mvpred = Mv(0, 0);
 
       pu_mv.repositionTo(UnitArea(CHROMA_420, Area(posx * mv_scale + pu->lx(), posy * mv_scale + pu->ly(), mv_scale, mv_scale)));
       PelUnitBuf origBuf_mv = pu->cs->getOrgBuf( pu_mv );
 
-      //xMotionEstimation( pu_4x4, origBuf_4x4, REF_PIC_LIST_0, mvpred, 0, mv_4x4, aaiMvpIdx[iRefList][iRefIdxTemp], uiBitsTemp, uiCostTemp, amvp[eRefPicList], false, true);
       xMotionEstimation( pu_mv, origBuf_mv, REF_PIC_LIST_0, mvpred, 0, mv_mf, aaiMvpIdx, uiBitsTemp, uiCostTemp, amvpinfo, false, false);
-    
+
+
       mvfield[0][posy * dim_mf + posx] = mv_mf.getHor()/2000.0f;
       mvfield[1][posy * dim_mf + posx] = mv_mf.getVer()/2000.0f;
       mvfield[2][posy * dim_mf + posx] = uiCostTemp/80000.0f;
@@ -121,10 +129,86 @@ void InterSearch::fillMVfield(int dim_mf, PredictionUnit* pu, Partitioner& parti
       mvfield[3][posy * dim_mf + posx] = mv_mf.getHor()/2000.0f;
       mvfield[4][posy * dim_mf + posx] = mv_mf.getVer()/2000.0f;
       mvfield[5][posy * dim_mf + posx] = uiCostTemp/80000.0f;
+
     }     
   }
+
+  switch (dim_mf)
+  {
+  case 32:
+    partitioner.mv_field_32x32 = mvfield;
+    break;
+  case 16:
+    partitioner.mv_field_16x16 = mvfield;
+    break;
+  case 8:
+    partitioner.mv_field_8x8 = mvfield;
+    break;
+  case 4:
+    partitioner.mv_field_4x4 = mvfield;
+    break;
+  case 2:
+    partitioner.mv_field_2x2 = mvfield;
+    break;
+  default:
+    break;
+  }
+
+
 }
 #endif
+
+
+
+#if MSMVF_DATASET
+
+
+void WriteFormatted_mf ( FILE* f, const char * format, ... )
+{
+  va_list args;
+  va_start ( args, format );
+  vfprintf ( f, format, args );
+  fflush( f );
+  va_end ( args );
+}
+
+
+void InterSearch::writeMVfield(int dim_mf, PredictionUnit* pu, FILE* csv_file, int aaiMvpIdx, const AMVPInfo& amvpinfo){
+
+  PredictionUnit  pu_mv = *pu;
+  int mv_scale = 128 / dim_mf;
+  std::string format = "%d;%d;%d;";
+
+  pu_mv.resizeTo (UnitArea(CHROMA_420, Area(0, 0, mv_scale, mv_scale)));
+
+    for (int posy = 0; posy < dim_mf; posy++){
+      for (int posx = 0; posx < dim_mf; posx++){
+
+        Distortion  uiCostTemp = 0;
+        uint32_t    uiBitsTemp = 0;
+
+        Mv mv_mf = Mv(0, 0);
+        pu_mv.repositionTo(UnitArea(CHROMA_420, Area(posx * mv_scale + pu->lx(), posy * mv_scale + pu->ly(), mv_scale, mv_scale)));
+        PelUnitBuf origBuf_mv = pu->cs->getOrgBuf( pu_mv );
+        Mv mvpred = Mv(0, 0);
+        xMotionEstimation( pu_mv, origBuf_mv, REF_PIC_LIST_0, mvpred, 0, mv_mf, aaiMvpIdx, uiBitsTemp, uiCostTemp, amvpinfo, false, true);
+        WriteFormatted_mf(csv_file, format.c_str(), mv_mf.getHor(), mv_mf.getVer(), uiCostTemp);
+
+        mvpred = Mv(0, 0);
+        mv_mf = Mv(0, 0);
+        uiCostTemp = 0;
+        uiBitsTemp = 0;
+
+        xMotionEstimation( pu_mv, origBuf_mv, REF_PIC_LIST_1, mvpred, 0, mv_mf, aaiMvpIdx, uiBitsTemp, uiCostTemp, amvpinfo, false, true);
+        WriteFormatted_mf(csv_file, format.c_str(), mv_mf.getHor(), mv_mf.getVer(), uiCostTemp);
+
+      }     
+    }
+    WriteFormatted_mf(csv_file, "\n");
+}
+#endif
+
+
 
 
 InterSearch::InterSearch()
@@ -2431,6 +2515,56 @@ void InterSearch::predInterSearch(CodingUnit& cu, Partitioner& partitioner)
 
           uiBitsTemp += m_auiMVPIdxCost[aaiMvpIdx[iRefList][iRefIdxTemp]][AMVP_MAX_NUM_CANDS];
 
+
+#if MSMVF_DATASET
+    
+    bool getMVfield = (pu.lwidth() == 128 && pu.lheight() == 128 && eRefPicList == 0 && iRefIdxTemp == 0 && pu.cu->imv == 0 && pu.cu->BcwIdx == 2);
+    
+    if(getMVfield){
+    
+#if MSMVF_4k
+      clock_t current = clock();
+      if (current % 4 == 0){
+#endif
+
+      std::string nameFile = filename_arg.substr(filename_arg.find_last_of("/\\") + 1);
+      std::string sTracingFile_mv = "mv_field_" + nameFile.substr(0, nameFile.find_last_of(".")) + "_QP_" + to_string(qp_arg) + ".csv";
+
+      FILE* m_trace_file_mv = fopen( sTracingFile_mv.c_str(), "a+" );
+
+      std::string format_head = "%d;%d;%d;%d;";
+      std::string format = "%d;%d;%d;";
+
+      WriteFormatted_mf(m_trace_file_mv, format_head.c_str(), cu.lx(), cu.ly(), cu.slice->getPOC(), cu.qp);
+
+      writeMVfield(32, &pu, m_trace_file_mv, aaiMvpIdx[iRefList][iRefIdxTemp], amvp[eRefPicList], uiCostTemp, uiBitsTemp);
+
+      writeMVfield(16, &pu, m_trace_file_mv, aaiMvpIdx[iRefList][iRefIdxTemp], amvp[eRefPicList], uiCostTemp, uiBitsTemp);
+
+      writeMVfield(8, &pu, m_trace_file_mv, aaiMvpIdx[iRefList][iRefIdxTemp], amvp[eRefPicList], uiCostTemp, uiBitsTemp);
+
+      writeMVfield(4, &pu, m_trace_file_mv, aaiMvpIdx[iRefList][iRefIdxTemp], amvp[eRefPicList], uiCostTemp, uiBitsTemp);
+
+      writeMVfield(2, &pu, m_trace_file_mv, aaiMvpIdx[iRefList][iRefIdxTemp], amvp[eRefPicList], uiCostTemp, uiBitsTemp);
+
+
+      fclose(m_trace_file_mv);  
+
+
+#if MSMVF_4k
+      pu.cu->record_ctu = true;
+      record = true;
+    }else{
+      record = false;
+    }
+#endif
+
+    }
+
+#endif
+
+
+
 #if MSMVF_GLOBAL && !MSMVF_DATASET
     bool getMVfield = (pu.lwidth() == 128 && pu.lheight() == 128 && eRefPicList == 0 && iRefIdxTemp == 0 && pu.cu->imv == 0 && pu.cu->BcwIdx == 2);
 
@@ -2438,26 +2572,15 @@ void InterSearch::predInterSearch(CodingUnit& cu, Partitioner& partitioner)
 
       int size_mf = 6;
 
-      //auto pu_4x4 = pu;
-      //pu_4x4.resizeTo (UnitArea(CHROMA_420, Area(0, 0, 4, 4)));
       partitioner.mv_field_32x32.resize(size_mf, std::vector<float>(1024, 0.0f));
 
-/*      auto pu_8x8 = pu;
-      pu_8x8.resizeTo (UnitArea(CHROMA_420, Area(0, 0, 8, 8))); */   
       partitioner.mv_field_16x16.resize(size_mf, std::vector<float>(256, 0.0f));
-    
-      //auto pu_16x16 = pu;
-      //pu_16x16.resizeTo (UnitArea(CHROMA_420, Area(0, 0, 16, 16)));    
+       
       partitioner.mv_field_8x8.resize(size_mf, std::vector<float>(64, 0.0f));
-
-/*      auto pu_32x32 = pu;
-      pu_32x32.resizeTo (UnitArea(CHROMA_420, Area(0, 0, 32, 32)));  */  
+ 
       partitioner.mv_field_4x4.resize(size_mf, std::vector<float>(16, 0.0f));
 
-/*      auto pu_64x64 = pu;
-      pu_64x64.resizeTo (UnitArea(CHROMA_420, Area(0, 0, 64, 64)));   */ 
       partitioner.mv_field_2x2.resize(size_mf, std::vector<float>(4, 0.0f));
-
 
 
       fillMVfield(32, &pu,  partitioner, aaiMvpIdx[iRefList][iRefIdxTemp], amvp[eRefPicList]);
@@ -2465,142 +2588,6 @@ void InterSearch::predInterSearch(CodingUnit& cu, Partitioner& partitioner)
       fillMVfield(8, &pu,  partitioner, aaiMvpIdx[iRefList][iRefIdxTemp], amvp[eRefPicList]);
       fillMVfield(4, &pu,  partitioner, aaiMvpIdx[iRefList][iRefIdxTemp], amvp[eRefPicList]);
       fillMVfield(2, &pu,  partitioner, aaiMvpIdx[iRefList][iRefIdxTemp], amvp[eRefPicList]);
-
-      //for (int posy = 0; posy < 32; posy++){
-      //  for (int posx = 0; posx < 32; posx++){
-      //    Mv mv_4x4 = Mv(0, 0);
-      //    pu_4x4.repositionTo(UnitArea(CHROMA_420, Area(posx*4 + pu.lx(), posy*4 + pu.ly(), 4, 4)));
-      //    PelUnitBuf origBuf_4x4 = pu.cs->getOrgBuf( pu_4x4 );
-      //    Mv mvpred = Mv(0, 0);
-      //    //xMotionEstimation( pu_4x4, origBuf_4x4, REF_PIC_LIST_0, mvpred, 0, mv_4x4, aaiMvpIdx[iRefList][iRefIdxTemp], uiBitsTemp, uiCostTemp, amvp[eRefPicList], false, true);
-      //    xMotionEstimation( pu_4x4, origBuf_4x4, REF_PIC_LIST_0, mvpred, 0, mv_4x4, aaiMvpIdx[iRefList][iRefIdxTemp], uiBitsTemp, uiCostTemp, amvp[eRefPicList], false, false);
-    
-      //    partitioner.mv_field_32x32[0][posy*32 + posx] = mv_4x4.getHor()/2000.0f;
-      //    partitioner.mv_field_32x32[1][posy*32 + posx] = mv_4x4.getVer()/2000.0f;
-      //    partitioner.mv_field_32x32[2][posy*32 + posx] = uiCostTemp/80000.0f;
-
-      //    mvpred = Mv(0, 0);
-      //    mv_4x4 = Mv(0, 0);
-      //    uiBitsTemp = 0;
-      //    uiCostTemp = 0;
-
-      //    xMotionEstimation( pu_4x4, origBuf_4x4, REF_PIC_LIST_1, mvpred, 0, mv_4x4, aaiMvpIdx[iRefList][iRefIdxTemp], uiBitsTemp, uiCostTemp, amvp[eRefPicList], false, false);
-
-      //    partitioner.mv_field_32x32[3][posy*32 + posx] = mv_4x4.getHor()/2000.0f;
-      //    partitioner.mv_field_32x32[4][posy*32 + posx] = mv_4x4.getVer()/2000.0f;
-      //    partitioner.mv_field_32x32[5][posy*32 + posx] = uiCostTemp/80000.0f;
-      //  }     
-      //}
-
-      //for (int posy = 0; posy < 16; posy++){
-      //  for (int posx = 0; posx < 16; posx++){
-      //    Mv mv_8x8 = Mv(0, 0);
-      //    pu_8x8.repositionTo(UnitArea(CHROMA_420, Area(posx*8 + pu.lx(), posy*8 + pu.ly(), 8, 8)));
-      //    PelUnitBuf origBuf_8x8 = pu.cs->getOrgBuf( pu_8x8 );
-      //    Mv mvpred = Mv(0, 0);
-      //    //xMotionEstimation( pu_8x8, origBuf_8x8, REF_PIC_LIST_0, mvpred, 0, mv_8x8, aaiMvpIdx[iRefList][iRefIdxTemp], uiBitsTemp, uiCostTemp, amvp[eRefPicList], false, true);
-      //    xMotionEstimation( pu_8x8, origBuf_8x8, REF_PIC_LIST_0, mvpred, 0, mv_8x8, aaiMvpIdx[iRefList][iRefIdxTemp], uiBitsTemp, uiCostTemp, amvp[eRefPicList], false, false);
-
-      //    partitioner.mv_field_16x16[0][posy*16 + posx] = mv_8x8.getHor()/2000.0f;
-      //    partitioner.mv_field_16x16[1][posy*16 + posx] = mv_8x8.getVer()/2000.0f;
-      //    partitioner.mv_field_16x16[2][posy*16 + posx] = uiCostTemp/80000.0f;
-
-      //    mvpred = Mv(0, 0);
-      //    mv_8x8 = Mv(0, 0);
-      //    uiBitsTemp = 0;
-      //    uiCostTemp = 0;
-
-      //    xMotionEstimation( pu_8x8, origBuf_8x8, REF_PIC_LIST_1, mvpred, 0, mv_8x8, aaiMvpIdx[iRefList][iRefIdxTemp], uiBitsTemp, uiCostTemp, amvp[eRefPicList], false, false);
-
-      //    partitioner.mv_field_16x16[3][posy*16 + posx] = mv_8x8.getHor()/2000.0f;
-      //    partitioner.mv_field_16x16[4][posy*16 + posx] = mv_8x8.getVer()/2000.0f;
-      //    partitioner.mv_field_16x16[5][posy*16 + posx] = uiCostTemp/80000.0f;
-      //  }     
-      //}
-
-
-      //for (int posy = 0; posy < 8; posy++){
-      //  for (int posx = 0; posx < 8; posx++){
-      //    Mv mv_16x16 = Mv(0, 0);
-      //    pu_16x16.repositionTo(UnitArea(CHROMA_420, Area(posx*16 + pu.lx(), posy*16 + pu.ly(), 16, 16)));
-      //    PelUnitBuf origBuf_16x16 = pu.cs->getOrgBuf( pu_16x16 );
-      //    Mv mvpred = Mv(0, 0);
-      //    //xMotionEstimation( pu_16x16, origBuf_16x16, REF_PIC_LIST_0, mvpred, 0, mv_16x16, aaiMvpIdx[iRefList][iRefIdxTemp], uiBitsTemp, uiCostTemp, amvp[eRefPicList], false, true);
-      //    xMotionEstimation( pu_16x16, origBuf_16x16, REF_PIC_LIST_0, mvpred, 0, mv_16x16, aaiMvpIdx[iRefList][iRefIdxTemp], uiBitsTemp, uiCostTemp, amvp[eRefPicList], false, false);
-      //    
-      //    partitioner.mv_field_8x8[0][posy*8 + posx] = mv_16x16.getHor()/2000.0f;
-      //    partitioner.mv_field_8x8[1][posy*8 + posx] = mv_16x16.getVer()/2000.0f;
-      //    partitioner.mv_field_8x8[2][posy*8 + posx] = uiCostTemp/80000.0f;
-
-      //    mvpred = Mv(0, 0);
-      //    mv_16x16 = Mv(0, 0);
-      //    uiBitsTemp = 0;
-      //    uiCostTemp = 0;
-
-      //    xMotionEstimation( pu_16x16, origBuf_16x16, REF_PIC_LIST_1, mvpred, 0, mv_16x16, aaiMvpIdx[iRefList][iRefIdxTemp], uiBitsTemp, uiCostTemp, amvp[eRefPicList], false, false);
-
-      //    partitioner.mv_field_8x8[3][posy*8 + posx] = mv_16x16.getHor()/2000.0f;
-      //    partitioner.mv_field_8x8[4][posy*8 + posx] = mv_16x16.getVer()/2000.0f;
-      //    partitioner.mv_field_8x8[5][posy*8 + posx] = uiCostTemp/80000.0f;
-
-      //  }     
-      //}
-
-
-      //for (int posy = 0; posy < 4; posy++){
-      //  for (int posx = 0; posx < 4; posx++){
-      //    Mv mv_32x32 = Mv(0, 0);
-      //    pu_32x32.repositionTo(UnitArea(CHROMA_420, Area(posx*32 + pu.lx(), posy*32 + pu.ly(), 32, 32)));
-      //    PelUnitBuf origBuf_32x32 = pu.cs->getOrgBuf( pu_32x32 );
-      //    Mv mvpred = Mv(0, 0);
-      //    //xMotionEstimation( pu_32x32, origBuf_32x32, REF_PIC_LIST_0, mvpred, 0, mv_32x32, aaiMvpIdx[iRefList][iRefIdxTemp], uiBitsTemp, uiCostTemp, amvp[eRefPicList], false, true);
-      //    xMotionEstimation( pu_32x32, origBuf_32x32, REF_PIC_LIST_0, mvpred, 0, mv_32x32, aaiMvpIdx[iRefList][iRefIdxTemp], uiBitsTemp, uiCostTemp, amvp[eRefPicList], false, false);
-
-
-      //    partitioner.mv_field_4x4[0][posy*4 + posx] = mv_32x32.getHor()/2000.0f;
-      //    partitioner.mv_field_4x4[1][posy*4 + posx] = mv_32x32.getVer()/2000.0f;
-      //    partitioner.mv_field_4x4[2][posy*4 + posx] = uiCostTemp/80000.0f;
-
-      //    mvpred = Mv(0, 0);
-      //    mv_32x32 = Mv(0, 0);
-      //    uiBitsTemp = 0;
-      //    uiCostTemp = 0;
-
-      //    xMotionEstimation( pu_32x32, origBuf_32x32, REF_PIC_LIST_1, mvpred, 0, mv_32x32, aaiMvpIdx[iRefList][iRefIdxTemp], uiBitsTemp, uiCostTemp, amvp[eRefPicList], false, false);
-
-      //    partitioner.mv_field_4x4[3][posy*4 + posx] = mv_32x32.getHor()/2000.0f;
-      //    partitioner.mv_field_4x4[4][posy*4 + posx] = mv_32x32.getVer()/2000.0f;
-      //    partitioner.mv_field_4x4[5][posy*4 + posx] = uiCostTemp/80000.0f;
-
-      //  }     
-      //}
-
-      //for (int posy = 0; posy < 2; posy++){
-      //  for (int posx = 0; posx < 2; posx++){
-      //    Mv mv_64x64 = Mv(0, 0);
-      //    pu_64x64.repositionTo(UnitArea(CHROMA_420, Area(posx*64 + pu.lx(), posy*64 + pu.ly(), 64, 64)));
-      //    PelUnitBuf origBuf_64x64 = pu.cs->getOrgBuf( pu_64x64 );
-      //    Mv mvpred = Mv(0, 0);
-      //    //xMotionEstimation( pu_64x64, origBuf_64x64, REF_PIC_LIST_0, mvpred, 0, mv_64x64, aaiMvpIdx[iRefList][iRefIdxTemp], uiBitsTemp, uiCostTemp, amvp[eRefPicList], false, true);
-      //    xMotionEstimation( pu_64x64, origBuf_64x64, REF_PIC_LIST_0, mvpred, 0, mv_64x64, aaiMvpIdx[iRefList][iRefIdxTemp], uiBitsTemp, uiCostTemp, amvp[eRefPicList], false, false);
- 
-      //    partitioner.mv_field_2x2[0][posy*2 + posx] = mv_64x64.getHor()/2000.0f;
-      //    partitioner.mv_field_2x2[1][posy*2 + posx] = mv_64x64.getVer()/2000.0f;
-      //    partitioner.mv_field_2x2[2][posy*2 + posx] = uiCostTemp/80000.0f;
-
-      //    mvpred = Mv(0, 0);
-      //    mv_64x64 = Mv(0, 0);
-      //    uiBitsTemp = 0;
-      //    uiCostTemp = 0;
-
-      //    xMotionEstimation( pu_64x64, origBuf_64x64, REF_PIC_LIST_1, mvpred, 0, mv_64x64, aaiMvpIdx[iRefList][iRefIdxTemp], uiBitsTemp, uiCostTemp, amvp[eRefPicList], false, false);
-
-      //    partitioner.mv_field_2x2[3][posy*2 + posx] = mv_64x64.getHor()/2000.0f;
-      //    partitioner.mv_field_2x2[4][posy*2 + posx] = mv_64x64.getVer()/2000.0f;
-      //    partitioner.mv_field_2x2[5][posy*2 + posx] = uiCostTemp/80000.0f;
-
-      //  }     
-      //}
 
     }
 

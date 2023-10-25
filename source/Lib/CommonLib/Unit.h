@@ -322,6 +322,17 @@ struct CodingUnit : public UnitArea
   int             refIdxBi[2];
   bool           mipFlag;
 
+#if MSMVF_DATASET
+  uint8_t ttDepth;
+  int tested_mode;
+  int mode_opt;
+  double checked_time;
+#endif
+
+#if MSMVF_4k  
+   bool record_ctu;
+#endif
+
   // needed for fast imv mode decisions
   int8_t          imvNumCand;
   uint8_t          smvdMode;

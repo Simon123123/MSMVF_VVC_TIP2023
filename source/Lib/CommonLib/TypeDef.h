@@ -55,9 +55,21 @@
 
 #define MSMVF_GLOBAL                                      1
 
-#if MSMVF_GLOBAL
+#if MSMVF_GLOBAL                                     
 #define MSMVF_DATASET                                     0
+#if MSMVF_DATASET                                     
+#define MSMVF_4k                                          0
+#endif
 #endif   
+
+#if MSMVF_4k
+extern bool record;
+#endif
+
+#if MSMVF_DATASET
+  extern std::string filename_arg;
+  extern int qp_arg;
+#endif
 
 
 #define JVET_S0058_GCI                                    1 // no_mtt_constraint_flag and no_weightedpred_constraint_flag
@@ -240,15 +252,29 @@ typedef std::pair<int, int>  TrCost;
 // ====================================================================================================================
 
 #ifndef ENABLE_TRACING
+#if MSMVF_DATASET
+#define ENABLE_TRACING                                    1 // DISABLE by default (enable only when debugging, requires 15% run-time in decoding) -- see documentation in 'doc/DTrace for NextSoftware.pdf'
+#else
 #define ENABLE_TRACING                                    0 // DISABLE by default (enable only when debugging, requires 15% run-time in decoding) -- see documentation in 'doc/DTrace for NextSoftware.pdf'
 #endif
+#endif
+
 
 #if ENABLE_TRACING
+#if MSMVF_DATASET
+#define K0149_BLOCK_STATISTICS                            1 // enables block statistics, which can be analysed with YUView (https://github.com/IENT/YUView)
+#if K0149_BLOCK_STATISTICS
+#define BLOCK_STATS_AS_CSV                                1 // statistics will be written in a comma separated value format. this is not supported by YUView
+#endif
+#else
 #define K0149_BLOCK_STATISTICS                            1 // enables block statistics, which can be analysed with YUView (https://github.com/IENT/YUView)
 #if K0149_BLOCK_STATISTICS
 #define BLOCK_STATS_AS_CSV                                0 // statistics will be written in a comma separated value format. this is not supported by YUView
 #endif
 #endif
+#endif
+
+
 
 #define WCG_EXT                                           1
 #define WCG_WPSNR                                         WCG_EXT

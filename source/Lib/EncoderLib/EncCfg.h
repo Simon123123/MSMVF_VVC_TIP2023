@@ -298,7 +298,6 @@ protected:
   int       m_drapPeriod;
 
 #if MSMVF_GLOBAL && !MSMVF_DATASET
-  //float m_threshold_qt;
   float m_threshold_mt;
   int m_skip_qt;
   std::string m_path_cnn;
@@ -1497,8 +1496,6 @@ public:
   const     std::vector<uint16_t>*   getSliceLosslessArray() const { return &m_sliceLosslessArray; }
 
 #if MSMVF_GLOBAL && !MSMVF_DATASET
-  //float     getThresholdQT()const                                            { return m_threshold_qt;                    }
-  //void      setThresholdQT( float t )                                        { m_threshold_qt = t;                       }
 
   float     getThresholdMT()const                                            { return m_threshold_mt;                    }
   void      setThresholdMT( float t )                                        { m_threshold_mt = t;                       }
@@ -1508,7 +1505,6 @@ public:
 
   std::string     getPathCNN()const                                            { return m_path_cnn;                    }
   void            setPathCNN( std::string t )                                        { m_path_cnn = t;                       }
-
 
 #endif
 

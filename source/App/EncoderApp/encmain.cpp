@@ -52,6 +52,10 @@ static const uint32_t settingHelpWidth = 84;
 static const uint32_t settingValueWidth = 3;
 // --------------------------------------------------------------------------------------------------------------------- //
 
+#if MSMVF_4k
+bool record;
+#endif
+
 //macro value printing function
 
 #define PRINT_CONSTANT(NAME, NAME_WIDTH, VALUE_WIDTH) std::cout << std::setw(NAME_WIDTH) << #NAME << " = " << std::setw(VALUE_WIDTH) << NAME << std::endl;
@@ -83,6 +87,11 @@ static void printMacroSettings()
 
 int main(int argc, char* argv[])
 {
+
+#if MSMVF_4k
+  record = false;
+#endif
+
   // print information
   fprintf( stdout, "\n" );
   fprintf( stdout, "VVCSoftware: VTM Encoder Version %s ", VTM_VERSION );

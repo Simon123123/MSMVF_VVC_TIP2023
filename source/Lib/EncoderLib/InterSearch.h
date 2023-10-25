@@ -175,9 +175,14 @@ protected:
 
 public:
 
-#if MSMVF_GLOBAL
-  void InterSearch::fillMVfield(int dim_mf, PredictionUnit* pu, Partitioner& partitioner, int aaiMvpIdx, const AMVPInfo& amvpinfo);
+#if MSMVF_GLOBAL && !MSMVF_DATASET
+void InterSearch::fillMVfield(int dim_mf, PredictionUnit* pu, Partitioner& partitioner, int aaiMvpIdx, const AMVPInfo& amvpinfo);
 #endif
+
+#if MSMVF_DATASET
+  void InterSearch::writeMVfield(int dim_mf, PredictionUnit* pu, FILE* csv_file, int aaiMvpIdx, const AMVPInfo& amvpinfo);
+#endif
+
 
   InterSearch();
   virtual ~InterSearch();

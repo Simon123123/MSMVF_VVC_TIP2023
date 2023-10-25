@@ -87,7 +87,6 @@ protected:
   std::string m_reconFileName;                                ///< output reconstruction file
 
 #if MSMVF_GLOBAL && !MSMVF_DATASET
-  //float m_threshold_qt;
   float m_threshold_mt;
   int m_skip_qt;
   std::string m_path_cnn;

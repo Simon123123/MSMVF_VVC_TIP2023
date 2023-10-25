@@ -54,6 +54,18 @@
 #include <algorithm>
 
 
+#if MSMVF_DATASET
+void WriteFormatted_pix ( FILE* f, const char * format, ... )
+{
+  va_list args;
+  va_start ( args, format );
+  vfprintf ( f, format, args );
+  fflush( f );
+  va_end ( args );
+}
+#endif
+
+
 
 //! \ingroup EncoderLib
 //! \{
@@ -560,7 +572,7 @@ void setMVField(int dim_mf, const Partitioner* partitioner, fdeep::tensor *mv_fi
   for (int posy = 0; posy < dim_mf; posy++){
       for (int posx = 0; posx < dim_mf; posx++){
 
-        int ind = posy*32 + posx;
+        int ind = posy * dim_mf + posx;
         mv_field_in->set(0, 0, posy, posx, 0, mvfield[0][ind]);
         mv_field_in->set(0, 0, posy, posx, 1, mvfield[1][ind]);
         mv_field_in->set(0, 0, posy, posx, 2, mvfield[2][ind]);
@@ -569,11 +581,10 @@ void setMVField(int dim_mf, const Partitioner* partitioner, fdeep::tensor *mv_fi
         mv_field_in->set(0, 0, posy, posx, 5, mvfield[5][ind]);
       }     
   }
-
-
 }
 
 #endif
+
 
 
 void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Partitioner& partitioner, double maxCostAllowed )
@@ -793,6 +804,50 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
       }
 
 
+#if MSMVF_DATASET
+
+    if (partitioner.currArea().lwidth() == 128 && partitioner.currArea().lheight() == 128 && currTestMode.opts == 0 && partitioner.currBtDepth == 0 && partitioner.chType == CHANNEL_TYPE_LUMA)
+    {
+#if MSMVF_4k 
+      if (record){
+#endif
+
+      std::string nameFile = filename_arg.substr(filename_arg.find_last_of("/\\") + 1);
+      std::string sTracingFile_res = "me_residuals_" + nameFile.substr(0, nameFile.find_last_of(".")) + "_QP_" + to_string(qp_arg) + ".csv";
+      std::string sTracingFile_ctu = "CTU_" + nameFile.substr(0, nameFile.find_last_of(".")) + "_QP_" + to_string(qp_arg) + ".csv";
+      
+
+      FILE* m_trace_file_res = fopen( sTracingFile_res.c_str(), "a+" );
+      FILE* m_trace_file_ctu = fopen( sTracingFile_ctu.c_str(), "a+" );
+
+      const AreaBuf<Pel> res =  m_bestModeUpdated ? bestCS->getResiBuf().bufs[0] : tempCS->getResiBuf().bufs[0];
+      const AreaBuf<Pel> ctu =  m_bestModeUpdated ? bestCS->getOrgBuf().bufs[0] : tempCS->getOrgBuf().bufs[0];
+      CodingStructure* res_ctu = m_bestModeUpdated ? bestCS : tempCS;
+
+     WriteFormatted_pix(m_trace_file_res, "%d;%d;%d;%d;%d;", partitioner.currArea().lx(), partitioner.currArea().ly(), tempCS->picture->poc, res_ctu->currQP[0], res_ctu->picture->temporalId);
+     WriteFormatted_pix(m_trace_file_ctu, "%d;%d;%d;%d;%d;", partitioner.currArea().lx(), partitioner.currArea().ly(), tempCS->picture->poc, res_ctu->currQP[0], res_ctu->picture->temporalId);
+      
+     for (int y=0;y<128;y++)
+        for (int x=0;x<128;x++){
+          WriteFormatted_pix(m_trace_file_res, "%d;", res.at(x, y));
+          WriteFormatted_pix(m_trace_file_ctu, "%d;", ctu.at(x, y));
+        }
+
+      WriteFormatted_pix(m_trace_file_res, "\n");
+      WriteFormatted_pix(m_trace_file_ctu, "\n");
+
+    fclose(m_trace_file_res);
+    fclose(m_trace_file_ctu);
+
+
+#if MSMVF_4k 
+      }
+#endif
+
+    }
+
+#endif
+
 #if MSMVF_GLOBAL && !MSMVF_DATASET
       if (partitioner.currArea().lwidth() == 128 && partitioner.currArea().lheight() == 128 && currTestMode.opts == 0 && partitioner.currBtDepth == 0 && partitioner.chType == CHANNEL_TYPE_LUMA)
       {
@@ -815,74 +870,6 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
         setMVField(4, &partitioner, &mv_field_in_4x4);
         setMVField(2, &partitioner, &mv_field_in_2x2);
 
-      //for (int posy = 0; posy < 32; posy++){
-      //  for (int posx = 0; posx < 32; posx++){
-
-      //    int ind = posy*32 + posx;
-      //    mv_field_in_32x32.set(0, 0, posy, posx, 0, partitioner.mv_field[0][ind]);
-      //    mv_field_in_32x32.set(0, 0, posy, posx, 1, partitioner.mv_field[1][ind]);
-      //    mv_field_in_32x32.set(0, 0, posy, posx, 2, partitioner.mv_field[2][ind]);
-      //    mv_field_in_32x32.set(0, 0, posy, posx, 3, partitioner.mv_field[3][ind]);
-      //    mv_field_in_32x32.set(0, 0, posy, posx, 4, partitioner.mv_field[4][ind]);
-      //    mv_field_in_32x32.set(0, 0, posy, posx, 5, partitioner.mv_field[5][ind]);
-      //  }     
-      //}
-
-      //for (int posy = 0; posy < 16; posy++){
-      //  for (int posx = 0; posx < 16; posx++){
-
-      //    int ind = posy*16 + posx;
-      //    mv_field_in_16x16.set(0, 0, posy, posx, 0, partitioner.mv_field_16x16[0][ind]);
-      //    mv_field_in_16x16.set(0, 0, posy, posx, 1, partitioner.mv_field_16x16[1][ind]);
-      //    mv_field_in_16x16.set(0, 0, posy, posx, 2, partitioner.mv_field_16x16[2][ind]);
-      //    mv_field_in_16x16.set(0, 0, posy, posx, 3, partitioner.mv_field_16x16[3][ind]);
-      //    mv_field_in_16x16.set(0, 0, posy, posx, 4, partitioner.mv_field_16x16[4][ind]);
-      //    mv_field_in_16x16.set(0, 0, posy, posx, 5, partitioner.mv_field_16x16[5][ind]);
-      //  }     
-      //}
-
-
-      //for (int posy = 0; posy < 8; posy++){
-      //  for (int posx = 0; posx < 8; posx++){
-
-      //    int ind = posy*8 + posx;
-      //    mv_field_in_8x8.set(0, 0, posy, posx, 0, partitioner.mv_field_8x8[0][ind]);
-      //    mv_field_in_8x8.set(0, 0, posy, posx, 1, partitioner.mv_field_8x8[1][ind]);
-      //    mv_field_in_8x8.set(0, 0, posy, posx, 2, partitioner.mv_field_8x8[2][ind]);
-      //    mv_field_in_8x8.set(0, 0, posy, posx, 3, partitioner.mv_field_8x8[3][ind]);
-      //    mv_field_in_8x8.set(0, 0, posy, posx, 4, partitioner.mv_field_8x8[4][ind]);
-      //    mv_field_in_8x8.set(0, 0, posy, posx, 5, partitioner.mv_field_8x8[5][ind]);
-      //  }     
-      //}
-
-
-      //for (int posy = 0; posy < 4; posy++){
-      //  for (int posx = 0; posx < 4; posx++){
-
-      //    int ind = posy*4 + posx;
-      //    mv_field_in_4x4.set(0, 0, posy, posx, 0, partitioner.mv_field_4x4[0][ind]);
-      //    mv_field_in_4x4.set(0, 0, posy, posx, 1, partitioner.mv_field_4x4[1][ind]);
-      //    mv_field_in_4x4.set(0, 0, posy, posx, 2, partitioner.mv_field_4x4[2][ind]);
-      //    mv_field_in_4x4.set(0, 0, posy, posx, 3, partitioner.mv_field_4x4[3][ind]);
-      //    mv_field_in_4x4.set(0, 0, posy, posx, 4, partitioner.mv_field_4x4[4][ind]);
-      //    mv_field_in_4x4.set(0, 0, posy, posx, 5, partitioner.mv_field_4x4[5][ind]);
-
-      //  }     
-      //}
-
-      //for (int posy = 0; posy < 2; posy++){
-      //  for (int posx = 0; posx < 2; posx++){
-
-      //    int ind = posy*2 + posx;
-      //    mv_field_in_2x2.set(0, 0, posy, posx, 0, partitioner.mv_field_2x2[0][ind]);
-      //    mv_field_in_2x2.set(0, 0, posy, posx, 1, partitioner.mv_field_2x2[1][ind]);
-      //    mv_field_in_2x2.set(0, 0, posy, posx, 2, partitioner.mv_field_2x2[2][ind]);
-      //    mv_field_in_2x2.set(0, 0, posy, posx, 3, partitioner.mv_field_2x2[3][ind]);
-      //    mv_field_in_2x2.set(0, 0, posy, posx, 4, partitioner.mv_field_2x2[4][ind]);
-      //    mv_field_in_2x2.set(0, 0, posy, posx, 5, partitioner.mv_field_2x2[5][ind]);
-
-      //  }     
-      //}
 
         for (int i = 0; i < 128; i++) {
           for (int j = 0; j < 128; j++) {
@@ -904,9 +891,6 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
         std::copy(res[2].as_vector()->cbegin(), res[2].as_vector()->cend(), partitioner.mt_map[1].begin()); 
         std::copy(res[3].as_vector()->cbegin(), res[3].as_vector()->cend(), partitioner.mt_map[2].begin()); 
 
-
-       //float thq = m_pcEncCfg->getThresholdQT();
-
         int num_blocks = 256;
         float aver_qt_depth = 0.0f;
 
@@ -917,8 +901,7 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
           }
         }
 
-        //float aver_qt_depth_r = roundf(aver_qt_depth);
-        //bool ctu_qtsplit = aver_qt_depth_r > (0 + thq);
+
         bool ctu_qtsplit =  roundf(aver_qt_depth) > 0;
         float mt_decision[5] = {0.0f};
 
@@ -945,22 +928,23 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
 
           mode_vec.erase(remove_if(mode_vec.begin(), mode_vec.end(), isBVsplit), mode_vec.end());
           mode_vec.erase(remove_if(mode_vec.begin(), mode_vec.end(), isBHsplit), mode_vec.end());
+        
         }else{
 
-        float thm = m_pcEncCfg->getThresholdMT();
+          float thm = m_pcEncCfg->getThresholdMT();
 
-      if (mt_decision[1] < mt_decision[2] && mt_decision[1] < thm)
-        mode_vec.erase(remove_if(mode_vec.begin(), mode_vec.end(), isBHsplit), mode_vec.end());
+          if (mt_decision[1] < mt_decision[2] && mt_decision[1] < thm)
+            mode_vec.erase(remove_if(mode_vec.begin(), mode_vec.end(), isBHsplit), mode_vec.end());
 
-      if (mt_decision[2] < mt_decision[1] && mt_decision[2] < thm)
-        mode_vec.erase(remove_if(mode_vec.begin(), mode_vec.end(), isBVsplit), mode_vec.end());
+          if (mt_decision[2] < mt_decision[1] && mt_decision[2] < thm)
+            mode_vec.erase(remove_if(mode_vec.begin(), mode_vec.end(), isBVsplit), mode_vec.end());
 
-      //if(roundf(aver_qt_depth + thq) < (0 + thq))
-        mode_vec.erase(remove_if(mode_vec.begin(), mode_vec.end(), isQTsplit), mode_vec.end());
-        //}
+          mode_vec.erase(remove_if(mode_vec.begin(), mode_vec.end(), isQTsplit), mode_vec.end());
+
         }
       }
 #endif
+
 
     }
     else if (currTestMode.type == ETM_HASH_INTER)

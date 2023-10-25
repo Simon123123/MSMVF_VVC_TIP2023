@@ -48,6 +48,12 @@
 
 using namespace std;
 
+#if MSMVF_DATASET
+std::string filename_arg;
+int qp_arg;
+#endif
+
+
 //! \ingroup EncoderApp
 //! \{
 
@@ -238,7 +244,6 @@ void EncApp::xInitLibCfg()
 
 #if MSMVF_GLOBAL && !MSMVF_DATASET
 
-  //m_cEncLib.setThresholdQT                                         (m_threshold_qt);
   m_cEncLib.setThresholdMT                                         (m_threshold_mt);
   m_cEncLib.setSkipQT                                              (m_skip_qt);
   m_cEncLib.setPathCNN                                             (m_path_cnn);
@@ -1122,6 +1127,12 @@ void EncApp::xInitLibCfg()
 void EncApp::xCreateLib( std::list<PelUnitBuf*>& recBufList, const int layerId )
 {
   // Video I/O
+
+#if MSMVF_DATASET
+  filename_arg = m_inputFileName;
+  qp_arg = m_iQP;
+#endif  
+
   m_cVideoIOYuvInputFile.open( m_inputFileName,     false, m_inputBitDepth, m_MSBExtendedBitDepth, m_internalBitDepth );  // read  mode
 #if EXTENSION_360_VIDEO
   m_cVideoIOYuvInputFile.skipFrames(m_FrameSkip, m_inputFileWidth, m_inputFileHeight, m_InputChromaFormatIDC);

@@ -286,6 +286,19 @@ CodingUnit& CodingUnit::operator=( const CodingUnit& other )
   ispMode           = other.ispMode;
   mipFlag           = other.mipFlag;
 
+#if MSMVF_DATASET
+  ttDepth = other.ttDepth;
+  tested_mode = other.tested_mode;
+  mode_opt = other.mode_opt;
+  checked_time = other.checked_time;
+#endif
+
+
+#if MSMVF_4k
+  record_ctu = other.record_ctu;
+#endif
+
+
   for (int idx = 0; idx < MAX_NUM_CHANNEL_TYPE; idx++)
   {
     curPLTSize[idx]   = other.curPLTSize[idx];
@@ -344,6 +357,17 @@ void CodingUnit::initData()
   smvdMode        = 0;
   ispMode           = 0;
   mipFlag           = false;
+
+#if MSMVF_DATASET
+   ttDepth = 0;
+   tested_mode = 17;
+   mode_opt = 0;
+   checked_time = 0.0;
+#endif   
+
+#if MSMVF_4k
+   record_ctu = false;
+#endif
 
   for (int idx = 0; idx < MAX_NUM_CHANNEL_TYPE; idx++)
   {

@@ -143,6 +143,11 @@ void Partitioner::setCUData( CodingUnit& cu )
   cu.qtDepth     = currQtDepth;
   cu.splitSeries = getSplitSeries();
   cu.modeTypeSeries = getModeTypeSeries();
+
+#if MSMVF_DATASET
+  cu.ttDepth = currTtDepth;
+#endif
+
 }
 
 void Partitioner::copyState( const Partitioner& other )
@@ -169,6 +174,10 @@ void Partitioner::copyState( const Partitioner& other )
   mv_field_4x4 = other.mv_field_4x4;
   mv_field_2x2 = other.mv_field_2x2;
 
+#endif
+
+#if MSMVF_DATASET
+  currTtDepth = other.currTtDepth;
 #endif
 
 #ifdef _DEBUG
@@ -274,6 +283,10 @@ void QTBTPartitioner::initCtu( const UnitArea& ctuArea, const ChannelType _chTyp
   currImplicitBtDepth = 0;
   chType      = _chType;
 
+#if MSMVF_DATASET
+  currTtDepth = 0;
+#endif
+
   m_partStack.clear();
   m_partStack.push_back( PartLevel( CTU_LEVEL, Partitioning{ ctuArea } ) );
   treeType = TREE_D;
@@ -353,6 +366,10 @@ void QTBTPartitioner::splitCurrArea( const PartSplit split, const CodingStructur
       // first and last part of triple split are equivalent to double bt split
       currBtDepth++;
       currSubdiv++;
+#if MSMVF_DATASET
+      currTtDepth++;
+#endif
+
     }
     m_partStack.back().canQtSplit = canQtSplit;
   }
@@ -362,6 +379,9 @@ void QTBTPartitioner::splitCurrArea( const PartSplit split, const CodingStructur
     CHECK( currMtDepth > 0, "Cannot split a non-square area other than with a binary split" );
     currMtDepth = 0;
     currBtDepth = 0;
+#if MSMVF_DATASET
+    currTtDepth = 0;
+#endif
     currQtDepth++;
     currSubdiv++;
   }
@@ -604,6 +624,12 @@ void QTBTPartitioner::exitCurrSplit()
     currMtDepth--;
     if( m_partStack.back().isImplicit ) currImplicitBtDepth--;
     currBtDepth--;
+
+#if MSMVF_DATASET
+  if(currSplit == CU_TRIH_SPLIT || currSplit == CU_TRIV_SPLIT )
+    currTtDepth--;
+#endif
+
     if( ( currSplit == CU_TRIH_SPLIT || currSplit == CU_TRIV_SPLIT ) && currIdx != 1 )
     {
       CHECK( currBtDepth == 0, "BT depth is '0', athough a TT split was performed" );

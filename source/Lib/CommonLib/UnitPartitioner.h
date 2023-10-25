@@ -135,6 +135,10 @@ public:
 
 #endif
 
+#if MSMVF_DATASET
+  unsigned currTtDepth;
+#endif
+
   unsigned currImplicitBtDepth;
   ChannelType chType;
   TreeType treeType;
@@ -219,6 +223,11 @@ public:
     mv_field_4x4 =  _initialState.mv_field_4x4;
     mv_field_2x2 =  _initialState.mv_field_2x2;
 
+#endif
+
+
+#if MSMVF_DATASET
+    currTtDepth = _initialState.currTtDepth;
 #endif
 
 #if _DEBUG

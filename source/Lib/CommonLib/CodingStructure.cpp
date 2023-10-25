@@ -544,6 +544,10 @@ CodingUnit& CodingStructure::addCU( const UnitArea &unit, const ChannelType chTy
   cu->treeType = treeType;
   cu->modeType = modeType;
 
+#if MSMVF_4k  
+  cu->record_ctu = record;
+#endif
+
   CodingUnit *prevCU = m_numCUs > 0 ? cus.back() : nullptr;
 
   if( prevCU )

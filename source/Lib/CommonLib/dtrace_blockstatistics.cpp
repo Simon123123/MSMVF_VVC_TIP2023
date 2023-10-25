@@ -948,8 +948,11 @@ void writeAllData(const CodingStructure& cs, const UnitArea& ctuArea)
 
 void writeAllCodedData(const CodingStructure & cs, const UnitArea & ctuArea)
 {
+#if !MSMVF_DATASET
   const int nShift = MV_FRACTIONAL_BITS_DIFF;
   const int nOffset = 1 << (nShift - 1);
+#endif
+
   const int maxNumChannelType = cs.pcv->chrFormat != CHROMA_400 && CS::isDualITree(cs) ? 2 : 1;
 
   for (int ch = 0; ch < maxNumChannelType; ch++)
@@ -958,6 +961,9 @@ void writeAllCodedData(const CodingStructure & cs, const UnitArea & ctuArea)
 
     for (const CodingUnit &cu : cs.traverseCUs(CS::getArea(cs, ctuArea, chType), chType))
     {
+
+#if !MSMVF_DATASET
+
       if( chType == CHANNEL_TYPE_LUMA )
       {
         DTRACE_BLOCK_SCALAR(g_trace_ctx, D_BLOCK_STATISTICS_CODED, cu, GetBlockStatisticName(BlockStatistic::Depth), cu.depth);
@@ -1177,6 +1183,21 @@ void writeAllCodedData(const CodingStructure & cs, const UnitArea & ctuArea)
           }
         }
       }
+
+#else
+
+#if MSMVF_4k
+      if(cu.record_ctu){ 
+#endif
+      if (!cu.chType)
+        g_trace_ctx->dtrace<false>( D_BLOCK_STATISTICS_CODED, "%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%.2f;\n", cs.picture->poc, cu.lx(), cu.ly(), cu.lwidth(), cu.lheight(), cu.tested_mode, cu.mode_opt, (int)cu.chType, cu.qtDepth, cu.btDepth, cu.mtDepth, cu.ttDepth, (int)cu.splitSeries, (int)cu.modeTypeSeries, cu.checked_time);
+
+#if MSMVF_4k
+      }
+#endif
+
+#endif
+
     }
   }
 }

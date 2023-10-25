@@ -733,7 +733,7 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
   ("ReconFile,o",                                     m_reconFileName,                             string(""), "Reconstructed YUV output file name")
 
 #if MSMVF_GLOBAL && !MSMVF_DATASET  
-  //("ThresholdQT,-thq",                                    m_threshold_qt,                             0.0f, "The threshold for the QT depth related partition acceleration")
+
   ("ThresholdMT,-thm",                                    m_threshold_mt,                             0.2f, "The threshold for the MT depth related partition acceleration")
   ("QTAcceleration,-skipqt",                              m_skip_qt,                                     1,    "Decide whether we should skip unnecessary QT splits")
   ("CnnModel,-cnn",                                       m_path_cnn,                                string(""), "Location of the trained CNN")
@@ -2499,6 +2499,13 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
   m_reshapeCW.adpOption = m_adpOption;
   m_reshapeCW.initialCW = m_initialCW;
 #if ENABLE_TRACING
+
+#if MSMVF_DATASET
+  std::string nameFile = m_inputFileName.substr(m_inputFileName.find_last_of("/\\") + 1);
+  sTracingFile = "trace_RA_encoded_CU_" + nameFile.substr(0, nameFile.find_last_of(".")) + "_QP_" + to_string(m_iQP) + ".csv";
+  sTracingRule = "D_BLOCK_STATISTICS_CODED:poc>=0";
+#endif
+
   g_trace_ctx = tracing_init(sTracingFile, sTracingRule);
   if( bTracingChannelsList && g_trace_ctx )
   {
