@@ -54,3 +54,20 @@ make -j
 For more details, refer to the CMake documentation: https://cmake.org/cmake/help/latest/
 
 
+Training instructions
+---------------------
+
+For the training of the related CNN network in the paper, plz download the aforementioned TFrecord dataset. Before start training, package of Keras, numpy and Tensorflow GPU 
+are required in the environment of training. Then we can call the scripts in folder cnn_script to train the CNN. The python script CNN_train.py is for defining the CNN structure
+and launching its training. 
+ 
+This script should be called in the following manner: python CNN_train.py -d <dataset_path> -o <output_path> -e <epoch> -bu <buffer_size> -ba <batch_size>
+where the buffer_size indicate the size of buffer to load in the memory (our dataset is too large to fit in the memory). 
+
+An example:  python CNN_train.py -d F:\tf_dataset -o F:\training_output -e 100 -bu 8000 -ba 400
+
+During the training, the trained CNN and a logfile are stored at the output_path. 
+
+
+
+
