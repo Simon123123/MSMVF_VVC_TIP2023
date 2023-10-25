@@ -1,7 +1,8 @@
 CNN-based Prediction of Partition Path for VVC Fast Inter Partitioning Using Motion Fields
 ============================================================
 
-This is the source code of paper **CNN-based Prediction of Partition Path for VVC Fast Inter Partitioning Using Motion Fields** currently under review of IEEE Transaction of Image Processing.
+This is the source code of paper **CNN-based Prediction of Partition Path for VVC Fast Inter Partitioning Using Motion Fields** (cf. https://arxiv.org/abs/2310.13838) 
+currently under review of IEEE Transactions on Image Processing.
 
 Our dataset MVF-Inter is available at https://1drv.ms/f/s!Aoi4nbmFu71Hgx9FJphdskXfgIVo?e=fXrs0o
 
@@ -53,6 +54,13 @@ make -j
 
 For more details, refer to the CMake documentation: https://cmake.org/cmake/help/latest/
 
+Dataset generation
+------------------
+
+To create the dataset, we should activate the macro MSMVF_GLOBAL and MSMVF_DATASET defined respectively at line 56 and 60 in file TypeDef.h. After the encoding of sequence with 
+the EncoderApp, four CSV files are generated, which are trace_RA_encoded_CU_seq_name.csv, me_residuals_seq_name.csv, CTU_seq_name.csv, and mv_field_seq_name.csv.
+
+
 
 Training instructions
 ---------------------
@@ -69,5 +77,16 @@ An example:  python CNN_train.py -d F:\tf_dataset -o F:\training_output -e 100 -
 During the training, the trained CNN and a logfile are stored at the output_path. 
 
 
+Model conversion and its integration in VTM
+-------------------------------------------
 
 
+We utilize the [frugally-deep](https://github.com/Dobiasd/frugally-deep/tree/67a8fbce938353cde316d97f70c030172e50915e) which is a header-only library for using Keras (tf) models
+in C++. With this library, we load the trained and converted CNN model into the VTM encoder and the inference is on CPU in real-time with C++. Firstly, a conversion is need to 
+convert the trained CNN in h5 format into json format. For this, we should call the script convert_model.py under folder cnn_script. For example, python convert_model.py cnn_ori.h5 cnn_converted.json.
+
+Secondly, we load the CNN model by providing its path to the VTM encoder via command line. More precisely, we should call the encoder in this way:
+
+.\EncoderApp -c <RAGOP32 config file> -cnn <location of the json file with file name>  -skipqt <0 or 1>   -thm <threshold>  -i <yuv input>  -wdt <frame width> -hgt <frame height>  -fr <frame rate> -f <num frames to encode> -q <QP value> -b <bin file> -o <rec yuv> -dph 1  -v 6
+
+where the -skipqt correspond to the **QTskip** in Fig. 10 in the paper and the -thm is the threshold **Thm** of Algorithm 1.
