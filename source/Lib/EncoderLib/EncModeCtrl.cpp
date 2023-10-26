@@ -1225,8 +1225,8 @@ void EncModeCtrlMTnoRQT::initCULevel( Partitioner &partitioner, const CodingStru
   // Add unit split modes
 
 #if MSMVF_GLOBAL && !MSMVF_DATASET
-  bool useConst = (partitioner.qt_map.size() != 0 && partitioner.chType == CHANNEL_TYPE_LUMA);
-  bool keepQT = m_pcEncCfg->getSkipQT() > 0;
+  bool useMVF = (partitioner.qt_map.size() != 0 && partitioner.chType == CHANNEL_TYPE_LUMA);
+  bool skipQT = m_pcEncCfg->getSkipQT() > 0;
 
   float thm = m_pcEncCfg->getThresholdMT();
 
@@ -1234,7 +1234,7 @@ void EncModeCtrlMTnoRQT::initCULevel( Partitioner &partitioner, const CodingStru
   int w_cu = partitioner.currArea().lwidth();
   int h_cu = partitioner.currArea().lheight();
 
-  bool use_qt_map = useConst && ((w_cu == 64 && h_cu == 64 && partitioner.currQtDepth == 1) || (w_cu == 32 && h_cu == 32 && partitioner.currQtDepth == 2) || (w_cu == 16 && h_cu == 16 && partitioner.currQtDepth == 3));
+  bool use_qt_map = useMVF && ((w_cu == 64 && h_cu == 64 && partitioner.currQtDepth == 1) || (w_cu == 32 && h_cu == 32 && partitioner.currQtDepth == 2) || (w_cu == 16 && h_cu == 16 && partitioner.currQtDepth == 3));
 
   if (use_qt_map)
   {
@@ -1260,7 +1260,7 @@ void EncModeCtrlMTnoRQT::initCULevel( Partitioner &partitioner, const CodingStru
 
     bool do_on_mtdepth = partitioner.currMtDepth <= 2;
 
-    bool use_mt_map = useConst && (!do_qt_split) && do_on_mtdepth;
+    bool use_mt_map = useMVF && (!do_qt_split) && do_on_mtdepth;
 
     float mt_decision[5] = {0.0};
     bool check_splits[5] = {true, false, false, false, false};
@@ -1332,7 +1332,7 @@ void EncModeCtrlMTnoRQT::initCULevel( Partitioner &partitioner, const CodingStru
   {
 
 #if MSMVF_GLOBAL && !MSMVF_DATASET
-    if (aver_qt_depth_r > partitioner.currQtDepth || !useConst || keepQT){
+    if (aver_qt_depth_r > partitioner.currQtDepth || !useMVF || (useMVF && !skipQT)){
 #endif
 
     for( int qp = maxQP; qp >= minQP; qp-- )
@@ -1350,7 +1350,7 @@ void EncModeCtrlMTnoRQT::initCULevel( Partitioner &partitioner, const CodingStru
   {
     // add split modes
 #if MSMVF_GLOBAL && !MSMVF_DATASET
-    if ((use_mt_map && check_splits[4]) || !useConst){
+    if ((use_mt_map && check_splits[4]) || !useMVF){
 #endif
     for( int qp = maxQP; qp >= minQP; qp-- )
     {
@@ -1366,7 +1366,7 @@ void EncModeCtrlMTnoRQT::initCULevel( Partitioner &partitioner, const CodingStru
     // add split modes
 
 #if MSMVF_GLOBAL && !MSMVF_DATASET
-    if ((use_mt_map && check_splits[3]) || !useConst){
+    if ((use_mt_map && check_splits[3]) || !useMVF){
 #endif
     for( int qp = maxQP; qp >= minQP; qp-- )
     {
@@ -1386,7 +1386,7 @@ void EncModeCtrlMTnoRQT::initCULevel( Partitioner &partitioner, const CodingStru
     // add split modes
 
 #if MSMVF_GLOBAL && !MSMVF_DATASET
-    if ((use_mt_map && check_splits[2]) || !useConst ){
+    if ((use_mt_map && check_splits[2]) || !useMVF ){
 #endif
 
     for( int qp = maxQP; qp >= minQP; qp-- )
@@ -1409,7 +1409,7 @@ void EncModeCtrlMTnoRQT::initCULevel( Partitioner &partitioner, const CodingStru
   {
 
 #if MSMVF_GLOBAL && !MSMVF_DATASET
-    if ((use_mt_map && check_splits[1]) || !useConst){
+    if ((use_mt_map && check_splits[1]) || !useMVF){
 #endif
 
     // add split modes
@@ -1433,7 +1433,7 @@ void EncModeCtrlMTnoRQT::initCULevel( Partitioner &partitioner, const CodingStru
   {
 
 #if MSMVF_GLOBAL && !MSMVF_DATASET
-    if (aver_qt_depth_r > partitioner.currQtDepth || !useConst || keepQT){ 
+    if (aver_qt_depth_r > partitioner.currQtDepth || !useMVF || (useMVF && !skipQT)){ 
 #endif
 
     for( int qp = maxQPq; qp >= minQPq; qp-- )
