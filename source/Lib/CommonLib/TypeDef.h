@@ -56,12 +56,12 @@
 #define MSMVF_GLOBAL                                      1
 
 #if MSMVF_GLOBAL                                     
-#define MSMVF_DATASET                                     1
+#define MSMVF_DATASET                                     0
 
 #if MSMVF_DATASET    
 
 #define MSMVF_4k                                          0
-#define MSMVF_REFPIX                                      1      
+#define MSMVF_REFPIX                                      0      
 
 #ifdef WIN32
 #define OS_SEP "/\\"
