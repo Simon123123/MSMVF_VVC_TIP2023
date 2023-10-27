@@ -2501,7 +2501,7 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
 #if ENABLE_TRACING
 
 #if MSMVF_DATASET
-  std::string nameFile = m_inputFileName.substr(m_inputFileName.find_last_of("/\\") + 1);
+  std::string nameFile = m_inputFileName.substr(m_inputFileName.find_last_of(OS_SEP) + 1);
   sTracingFile = "trace_RA_encoded_CU_" + nameFile.substr(0, nameFile.find_last_of(".")) + "_QP_" + to_string(m_iQP) + ".csv";
   sTracingRule = "D_BLOCK_STATISTICS_CODED:poc>=0";
 #endif

@@ -2527,7 +2527,8 @@ void InterSearch::predInterSearch(CodingUnit& cu, Partitioner& partitioner)
       if (current % 4 == 0){
 #endif
 
-      std::string nameFile = filename_arg.substr(filename_arg.find_last_of("/\\") + 1);
+
+      std::string nameFile = filename_arg.substr(filename_arg.find_last_of(OS_SEP) + 1);
       std::string sTracingFile_mv = "mv_field_" + nameFile.substr(0, nameFile.find_last_of(".")) + "_QP_" + to_string(qp_arg) + ".csv";
 
       FILE* m_trace_file_mv = fopen( sTracingFile_mv.c_str(), "a+" );
@@ -2537,18 +2538,17 @@ void InterSearch::predInterSearch(CodingUnit& cu, Partitioner& partitioner)
 
       WriteFormatted_mf(m_trace_file_mv, format_head.c_str(), cu.lx(), cu.ly(), cu.slice->getPOC(), cu.qp);
 
-      writeMVfield(32, &pu, m_trace_file_mv, aaiMvpIdx[iRefList][iRefIdxTemp], amvp[eRefPicList], uiCostTemp, uiBitsTemp);
+      writeMVfield(32, &pu, m_trace_file_mv, aaiMvpIdx[iRefList][iRefIdxTemp], amvp[eRefPicList]);
 
-      writeMVfield(16, &pu, m_trace_file_mv, aaiMvpIdx[iRefList][iRefIdxTemp], amvp[eRefPicList], uiCostTemp, uiBitsTemp);
+      writeMVfield(16, &pu, m_trace_file_mv, aaiMvpIdx[iRefList][iRefIdxTemp], amvp[eRefPicList]);
 
-      writeMVfield(8, &pu, m_trace_file_mv, aaiMvpIdx[iRefList][iRefIdxTemp], amvp[eRefPicList], uiCostTemp, uiBitsTemp);
+      writeMVfield(8, &pu, m_trace_file_mv, aaiMvpIdx[iRefList][iRefIdxTemp], amvp[eRefPicList]);
 
-      writeMVfield(4, &pu, m_trace_file_mv, aaiMvpIdx[iRefList][iRefIdxTemp], amvp[eRefPicList], uiCostTemp, uiBitsTemp);
+      writeMVfield(4, &pu, m_trace_file_mv, aaiMvpIdx[iRefList][iRefIdxTemp], amvp[eRefPicList]);
 
-      writeMVfield(2, &pu, m_trace_file_mv, aaiMvpIdx[iRefList][iRefIdxTemp], amvp[eRefPicList], uiCostTemp, uiBitsTemp);
+      writeMVfield(2, &pu, m_trace_file_mv, aaiMvpIdx[iRefList][iRefIdxTemp], amvp[eRefPicList]);
 
-
-      fclose(m_trace_file_mv);  
+      std::fclose(m_trace_file_mv);  
 
 
 #if MSMVF_4k

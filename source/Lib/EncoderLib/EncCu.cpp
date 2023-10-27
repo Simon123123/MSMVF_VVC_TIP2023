@@ -812,7 +812,9 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
       if (record){
 #endif
 
-      std::string nameFile = filename_arg.substr(filename_arg.find_last_of("/\\") + 1);
+
+
+      std::string nameFile = filename_arg.substr(filename_arg.find_last_of(OS_SEP) + 1);
       std::string sTracingFile_res = "me_residuals_" + nameFile.substr(0, nameFile.find_last_of(".")) + "_QP_" + to_string(qp_arg) + ".csv";
       std::string sTracingFile_ctu = "CTU_" + nameFile.substr(0, nameFile.find_last_of(".")) + "_QP_" + to_string(qp_arg) + ".csv";
       
@@ -836,8 +838,52 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
       WriteFormatted_pix(m_trace_file_res, "\n");
       WriteFormatted_pix(m_trace_file_ctu, "\n");
 
-    fclose(m_trace_file_res);
-    fclose(m_trace_file_ctu);
+    std::fclose(m_trace_file_res);
+    std::fclose(m_trace_file_ctu);
+
+
+
+#if MSMVF_REFPIX
+
+      std::string sTracingFile_ref_pixels = "RefPixel_" + nameFile.substr(0, nameFile.find_last_of(".")) + "_QP_" + to_string(qp_arg) + ".csv";
+      FILE* m_trace_file_refpix = fopen( sTracingFile_ref_pixels.c_str(), "a+" );
+      WriteFormatted_pix(m_trace_file_refpix, "%d;%d;%d;%d;%d;", partitioner.currArea().lx(), partitioner.currArea().ly(), tempCS->picture->poc, res_ctu->currQP[0], res_ctu->picture->temporalId);
+
+      bool wrap_l0 = bestCS->slice->getRefPic(REF_PIC_LIST_0, 0)->isWrapAroundEnabled( bestCS->pps );
+      CPelBuf buf_l0 = bestCS->slice->getRefPic(REF_PIC_LIST_0, 0)->getRecoBuf(bestCS->area.blocks[COMPONENT_Y], wrap_l0);
+      
+
+      for(int y = -64; y < 192; y++){
+        for (int x = -64; x < 192; x++){
+
+          const Pel* const  piRefSrch = buf_l0.buf + y * buf_l0.stride + x;
+          WriteFormatted_pix(m_trace_file_refpix, "%d;", *piRefSrch);
+          
+        }      
+      } 
+        
+      WriteFormatted_pix(m_trace_file_refpix, "\n");
+      
+      WriteFormatted_pix(m_trace_file_refpix, "%d;%d;%d;%d;%d;", partitioner.currArea().lx(), partitioner.currArea().ly(), tempCS->picture->poc, res_ctu->currQP[0], res_ctu->picture->temporalId);
+
+      bool wrap_l1 = bestCS->slice->getRefPic(REF_PIC_LIST_1, 0)->isWrapAroundEnabled( bestCS->pps );
+      CPelBuf buf_l1 = bestCS->slice->getRefPic(REF_PIC_LIST_1, 0)->getRecoBuf(bestCS->area.blocks[COMPONENT_Y], wrap_l1);
+      
+      for(int y = -64; y < 192; y++){
+        for (int x = -64; x < 192; x++){
+
+          const Pel* const  piRefSrch = buf_l1.buf + y * buf_l1.stride + x;
+          WriteFormatted_pix(m_trace_file_refpix, "%d;", *piRefSrch); 
+
+        }      
+      } 
+        
+      WriteFormatted_pix(m_trace_file_refpix, "\n");
+
+      std::fclose(m_trace_file_refpix);
+
+#endif
+
 
 
 #if MSMVF_4k 
