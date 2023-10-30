@@ -54,11 +54,14 @@ make -j
 
 For more details, refer to the CMake documentation: https://cmake.org/cmake/help/latest/
 
-Dataset generation
-------------------
+Dataset generation and processing
+---------------------------------
 
 To create the dataset, we should activate the macro MSMVF_GLOBAL and MSMVF_DATASET defined respectively at line 56 and 60 in file TypeDef.h. After the encoding of sequence with 
 the EncoderApp, four CSV files are generated, which are trace_RA_encoded_CU_seq_name.csv, me_residuals_seq_name.csv, CTU_seq_name.csv, and mv_field_seq_name.csv.
+
+
+
 
 
 
@@ -87,6 +90,6 @@ convert the trained CNN in h5 format into json format. For this, we should call 
 
 Secondly, we load the CNN model by providing its path to the VTM encoder via command line. More precisely, we should call the encoder in this way:
 
-.\EncoderApp -c <RAGOP32 config file> -cnn <location of the json file with file name>  -skipqt <0 or 1>   -thm <threshold>  -i <yuv input>  -wdt <frame width> -hgt <frame height>  -fr <frame rate> -f <num frames to encode> -q <QP value> -b <bin file> -o <rec yuv> -dph 1  -v 6
+.\EncoderApp -c \<RAGOP32 config file\> -cnn \<location of the json file with file name\>  -skipqt \<0 or 1\>   -thm \<threshold\>  -i \<yuv input\>  -wdt \<frame width\> -hgt \<frame height\>  -fr \<frame rate\> -f \<num frames to encode\> -q \<QP value\> -b \<bin file\> -o \<rec yuv\> -dph 1  -v 6
 
 where the -skipqt correspond to the **QTskip** in Fig. 10 in the paper and the -thm is the threshold **Thm** of Algorithm 1.

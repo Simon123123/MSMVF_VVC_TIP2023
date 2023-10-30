@@ -2534,7 +2534,6 @@ void InterSearch::predInterSearch(CodingUnit& cu, Partitioner& partitioner)
       FILE* m_trace_file_mv = fopen( sTracingFile_mv.c_str(), "a+" );
 
       std::string format_head = "%d;%d;%d;%d;";
-      std::string format = "%d;%d;%d;";
 
       WriteFormatted_mf(m_trace_file_mv, format_head.c_str(), cu.lx(), cu.ly(), cu.slice->getPOC(), cu.qp);
 
