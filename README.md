@@ -57,10 +57,10 @@ For more details, refer to the CMake documentation: https://cmake.org/cmake/help
 Dataset generation and processing
 ---------------------------------
 
-To create the dataset, activate the macros **MSMVF_GLOBAL** and **MSMVF_DATASET** defined respectively at line 56 and 60 in the file "TypeDef.h:. If you want to generate a dataset 
+To create the dataset, activate the macros **MSMVF_GLOBAL** and **MSMVF_DATASET** defined respectively at line 56 and 60 in the file **TypeDef.h**. If you want to generate a dataset 
 containing reference pixels as an input feature (cf. The training of **PIX-CNN** in our paper), please activate the **MSMVF_REFPIX** macro. The **MSMVF_4k** macro needs to be activated to generate data for 4K sequences. 
-After encoding the sequence with the EncoderApp, four (five if **MSMVF_REFPIX** is enabled) CSV files are generated: **trace_RA_encoded_CU_seq_name.csv**, **me_residuals_seq_name.csv**, **CTU_seq_name.csv**, 
-and **mv_field_seq_name.csv** (plus **RefPixel_seq_name.csv**). 
+As described in our paper, we encode the first 64 frames for sequences in BVI-DVI dataset and YouTube UGC dataset at QP 22, 27, 32 and 37. After encoding the sequence with the EncoderApp, 
+four (five if **MSMVF_REFPIX** is enabled) CSV files are generated: **trace_RA_encoded_CU_seq_name.csv**, **me_residuals_seq_name.csv**, **CTU_seq_name.csv**, and **mv_field_seq_name.csv** (plus **RefPixel_seq_name.csv**). 
 
 
 To process these generated CSV files and create a large TFRecord dataset, follow these steps:

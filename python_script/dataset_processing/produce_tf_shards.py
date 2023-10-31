@@ -109,8 +109,9 @@ def get_function_para(arg_csv, arg_output, arg_sample_reso, shard_sz):
         if "2176" in name_f:
             num_seq["2176"] += 1    
             
-           
-    sample_per_seq = {"272":3*2*62, "544":7*4*62, "720P":10*5*62, "1088":15*8*62, "2176":30*17*62}  
+    # for 4K sequences, we randomly select one quater of all the encoded CTUs to store in the CSV file 
+    
+    sample_per_seq = {"272":3*2*62, "544":7*4*62, "720P":10*5*62, "1088":15*8*62, "2176":30*17*62 / 4}  
 
     num_per_res = {res: sample_per_seq[res]*num_seq[res] for res in num_seq}
     
