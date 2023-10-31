@@ -62,55 +62,56 @@ def get_function_para(arg_csv, arg_output, arg_sample_reso, shard_sz):
             file_types[key].append(f)
  
     assert len(file_types["CTU"]) == len(file_types["me"]) == len(file_types["mv"]) == len(file_types["trace"]), "The number of files are not correct!"
-    
-    
-# code for csv files of JVET CTC sequence        
-    
-    # num_seq = {"272": 0, "544":0, "720P":0, "1088":0, "2176":0}
-             
+ 
+
+#Code for processing CSV files of the encoding of JVET-CTC sequences 
+
+    # num_seq = {"240p": 0, "480p":0, "720p":0, "1080p":0, "2160p":0}  
+   
     # for name_f in file_types["trace"]:
         
-        # if "272" in name_f:
-            # num_seq["272"] += 1
+        # if "240p" in name_f:
+            # num_seq["240p"] += 1
 
-        # if "544" in name_f:
-            # num_seq["544"] += 1                     
+        # if "480p" in name_f:
+            # num_seq["480p"] += 1                     
 
-        # if "720P" in name_f:
-            # num_seq["720P"] += 1    
+        # if "720p" in name_f:
+            # num_seq["720p"] += 1    
             
-        # if "1088" in name_f:
-            # num_seq["1088"] += 1                
+        # if "1080p" in name_f:
+            # num_seq["1080p"] += 1                
 
-        # if "2176" in name_f:
-            # num_seq["2176"] += 1    
-     
-    # sample_per_seq = {"272":3*2*62, "544":7*4*62, "720P":10*5*62, "1088":15*8*62, "2176":30*17*62}  
+        # if "2160p" in name_f:
+            # num_seq["2160p"] += 1                
+    
+    # sample_per_seq = {"240p":3*1*62, "480p":6*3*62, "720p":10*5*62, "1080p":15*8*62, "2160p":30*16*62}   
 
 
-    num_seq = {"240p": 0, "480p":0, "720p":0, "1080p":0, "2160p":0}  
-     
+
+    num_seq = {"272": 0, "544":0, "720P":0, "1088":0, "2176":0} 
+ 
+
     for name_f in file_types["trace"]:
         
-        if "240p" in name_f:
-            num_seq["240p"] += 1
+        if "272" in name_f:
+            num_seq["272"] += 1
 
-        if "480p" in name_f:
-            num_seq["480p"] += 1                     
+        if "544" in name_f:
+            num_seq["544"] += 1                     
 
-        if "720p" in name_f:
-            num_seq["720p"] += 1    
+        if "720P" in name_f:
+            num_seq["720P"] += 1    
             
-        if "1080p" in name_f:
-            num_seq["1080p"] += 1                
+        if "1088" in name_f:
+            num_seq["1088"] += 1                
 
-        if "2160p" in name_f:
-            num_seq["2160p"] += 1                
+        if "2176" in name_f:
+            num_seq["2176"] += 1    
             
+           
+    sample_per_seq = {"272":3*2*62, "544":7*4*62, "720P":10*5*62, "1088":15*8*62, "2176":30*17*62}  
 
-    sample_per_seq = {"240p":3*1*62, "480p":6*3*62, "720p":10*5*62, "1080p":15*8*62, "2160p":30*16*62}  
-
-    
     num_per_res = {res: sample_per_seq[res]*num_seq[res] for res in num_seq}
     
     valid_num_s = True
@@ -151,7 +152,28 @@ def trace_process(f, np_trace, index_list):
     bord_w = 0
     
     bord_h = 0
-    
+  
+
+#Code for processing CSV files of the encoding of JVET-CTC sequences 
+
+    # if "240p" in f:
+        # bord_w = int(416/128)*128
+        # bord_h = int(240/128)*128
+    # if "480p" in f:
+        # bord_w = int(832/128)*128
+        # bord_h = int(480/128)*128
+    # if "720p" in f:
+        # bord_w = int(1280/128)*128
+        # bord_h = int(720/128)*128
+    # if "1080p" in f:
+        # bord_w = int(1920/128)*128
+        # bord_h = int(1080/128)*128
+    # if "2160p" in f:
+        # bord_w = int(3840/128)*128
+        # bord_h = int(2160/128)*128     
+
+
+        
     if "272" in f:
         bord_w = int(480/128)*128
         bord_h = int(272/128)*128
@@ -169,26 +191,6 @@ def trace_process(f, np_trace, index_list):
         bord_h = int(2176/128)*128
         
         
-        
-# code for csv files of JVET CTC sequence    
-        
-    # if "240p" in f:
-        # bord_w = int(416/128)*128
-        # bord_h = int(240/128)*128
-    # if "480p" in f:
-        # bord_w = int(832/128)*128
-        # bord_h = int(480/128)*128
-    # if "720p" in f:
-        # bord_w = int(1280/128)*128
-        # bord_h = int(720/128)*128
-    # if "1080p" in f:
-        # bord_w = int(1920/128)*128
-        # bord_h = int(1080/128)*128
-    # if "2160p" in f:
-        # bord_w = int(3840/128)*128
-        # bord_h = int(2160/128)*128        
-        
-    
 
     qt_map = np.empty((size_tfrecord, 16, 16, 1), dtype=np.int8)
 
@@ -463,6 +465,19 @@ def write_tfrecords_file(arg_csv, f, arg_output, num_per_seq, sample_per_seq, sh
                 writer.write(serialized)  
             
                 
-        
        
-        
+
+
+if __name__ == '__main__':
+    
+    
+    csv_path, output_path, num_process, sam_reso, shard_sz = getargs(sys.argv)     
+    args = get_function_para(csv_path, output_path, sam_reso, shard_sz)
+    pool = Pool(processes = num_process)              
+    pool.starmap(write_tfrecords_file, args)  
+
+
+
+
+
+
