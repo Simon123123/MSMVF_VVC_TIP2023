@@ -73,7 +73,7 @@ run the following command:
 
 
 ```
-python produce_tf_shards.py -d \<csv_path\> -o \<output_path\> -p \<num_process\> -r \<num_sample_per_resolution\> -s \<num_sample_per_shard\>
+python produce_tf_shards.py -d <csv_path> -o <output_path> -p <num_process> -r <num_sample_per_resolution> -s <num_sample_per_shard>
 ```
 
 This script operates in a multi-process manner, and each encoding corresponds to one process. **num_process** represents the maximum number of parallel processes.
@@ -82,7 +82,7 @@ This script operates in a multi-process manner, and each encoding corresponds to
 3.  Next, execute the **merge_shards.py** script located in **python_script\dataset_processing** to combine these shards into two large TFRecord files, one for the training set and the other for the test set:
 
 ```
-python merge_shards.py -i \<path_shards\> -o \<output_path\> -r \<ratio_test_split\>
+python merge_shards.py -i <path_shards> -o <output_path> -r <ratio_test_split>
 ```
 
 
@@ -131,7 +131,7 @@ We utilize the [frugally-deep](https://github.com/Dobiasd/frugally-deep/tree/67a
 in C++. With this library, we load the trained and converted CNN model into the VTM encoder, and the inference is performed on the CPU in real-time with C++. 
 
 
-Firstly, a conversion is required to 
+-Firstly, a conversion is required to 
 convert the trained CNN from the h5 format into the json format. To acheive this, run the **convert_model.py** script located in **python_script\cnn_training**. For example:
 
 ```
@@ -139,10 +139,10 @@ python convert_model.py cnn_ori.h5 cnn_converted.json.
 ```
 
 
-Secondly, we load the CNN model by providing its path to the VTM encoder via the command line. Specifically, we should call the encoder in the following manner:
+-Secondly, we load the CNN model by providing its path to the VTM encoder via the command line. Specifically, we should call the encoder in the following manner:
 
 ```
-.\EncoderApp -c \<RAGOP32 config file\> -cnn \<location of the json file with file name\>  -skipqt \<0 or 1\>   -thm \<threshold\>  -i \<yuv input\>  -wdt \<frame width\> -hgt \<frame height\>  -fr \<frame rate\> -f \<num frames to encode\> -q \<QP value\> -b \<bin file\> -o \<rec yuv\> -dph 1  -v 6
+.\EncoderApp -c <RAGOP32 config file> -cnn <location of the json file with file name>  -skipqt <0 or 1>   -thm <threshold>  -i <yuv input>  -wdt <frame width> -hgt <frame height>  -fr <frame rate> -f <num frames to encode> -q <QP value> -b <bin file> -o <rec yuv> -dph 1  -v 6
 ```
 
 
