@@ -72,18 +72,18 @@ To process these generated CSV files and create a large TFRecord dataset, follow
 run the following command: 
 
 
-'''
+```
 python produce_tf_shards.py -d \<csv_path\> -o \<output_path\> -p \<num_process\> -r \<num_sample_per_resolution\> -s \<num_sample_per_shard\>
-'''
+```
 
 This script operates in a multi-process manner, and each encoding corresponds to one process. **num_process** represents the maximum number of parallel processes.
 
 
 3.  Next, execute the **merge_shards.py** script located in **python_script\dataset_processing** to combine these shards into two large TFRecord files, one for the training set and the other for the test set:
 
-'''
+```
 python merge_shards.py -i \<path_shards\> -o \<output_path\> -r \<ratio_test_split\>
-'''
+```
 
 
 It's important to note that **ratio_test_split** should be a value between 0 and 1, indicating the proportion of samples in the test set. For instance, ratio_test_split = 0.2 signifies that 20\% of the samples are in the test set. 
@@ -107,17 +107,17 @@ You can then use the scripts in the **python_script\cnn_training** folder to tra
 To run this script, use the following command:
 
 
-''' 
+```
 python CNN_train.py -d <dataset_path> -o <output_path> -e <epoch> -bu <buffer_size> -ba <batch_size>
-'''
+```
 
 Here, **buffer_size** indicates the size of the buffer to load into memory (our dataset is too large to fit entirely into memory). 
 
 For example:  
 
-'''
+```
 python CNN_train.py -d F:\tf_dataset -o F:\training_output -e 100 -bu 8000 -ba 400
-'''
+```
 
 
 During training, the trained CNN and a log file will be stored at the **output_path**. 
@@ -134,16 +134,16 @@ in C++. With this library, we load the trained and converted CNN model into the 
 Firstly, a conversion is required to 
 convert the trained CNN from the h5 format into the json format. To acheive this, run the **convert_model.py** script located in **python_script\cnn_training**. For example:
 
-'''
+```
 python convert_model.py cnn_ori.h5 cnn_converted.json.
-'''
+```
 
 
 Secondly, we load the CNN model by providing its path to the VTM encoder via the command line. Specifically, we should call the encoder in the following manner:
 
-'''
+```
 .\EncoderApp -c \<RAGOP32 config file\> -cnn \<location of the json file with file name\>  -skipqt \<0 or 1\>   -thm \<threshold\>  -i \<yuv input\>  -wdt \<frame width\> -hgt \<frame height\>  -fr \<frame rate\> -f \<num frames to encode\> -q \<QP value\> -b \<bin file\> -o \<rec yuv\> -dph 1  -v 6
-'''
+```
 
 
 where the **-skipqt** corresponds to the **QTskip** in Figure 10 in the paper and the **-thm** is the threshold **Thm** of Algorithm 1.
