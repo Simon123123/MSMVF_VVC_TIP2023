@@ -149,8 +149,3 @@ python convert_model.py cnn_ori.h5 cnn_converted.json.
 where the **-skipqt** corresponds to the **QTskip** in Figure 10 in the paper and the **-thm** is the threshold **Thm** of Algorithm 1.
 
 
-Precision evaluation
---------------------
-
-To do
-
