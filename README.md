@@ -135,7 +135,7 @@ in C++. With this library, we load the trained and converted CNN model into the 
 convert the trained CNN from the h5 format into the json format. To acheive this, run the **convert_model.py** script located in **python_script\cnn_training**. For example:
 
 ```
-python convert_model.py cnn_ori.h5 cnn_converted.json.
+python convert_model.py cnn_ori.h5 cnn_converted.json
 ```
 
 
