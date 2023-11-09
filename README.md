@@ -7,6 +7,8 @@ currently under review of IEEE Transactions on Image Processing.
 Our dataset MVF-Inter is available at https://1drv.ms/f/s!Aoi4nbmFu71Hgx9FJphdskXfgIVo?e=fXrs0o
 
 
+For reusing the code in this project, please think about citing this paper. Thanks! If you have further questions, please contact me at liusimon0914@gmail.com.
+
 Build instructions
 ------------------
 
@@ -147,5 +149,6 @@ python convert_model.py cnn_ori.h5 cnn_converted.json
 
 
 where the **-skipqt** corresponds to the **QTskip** in Figure 10 in the paper and the **-thm** is the threshold **Thm** of Algorithm 1.
+
 
 
