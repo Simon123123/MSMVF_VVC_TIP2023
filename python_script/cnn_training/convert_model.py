@@ -2,16 +2,15 @@
 """Convert a Keras model to frugally-deep format.
 """
 
-import argparse
 import base64
 import datetime
 import hashlib
 import json
+import sys
 
 import numpy as np
-import tensorflow as tf
 from tensorflow.keras import backend as K
-from tensorflow.keras.layers import Input, Embedding, CategoryEncoding
+from tensorflow.keras.layers import Input, Embedding
 from tensorflow.keras.models import Model, load_model
 
 __author__ = "Tobias Hermann"
@@ -57,6 +56,12 @@ def transform_kernels(kernels, n_gates, transform_func):
 def transform_bias(bias):
     """Transforms bias weights of an LSTM layer into the regular Keras format."""
     return np.sum(np.split(bias, 2, axis=0), axis=0)
+
+
+def write_text_file(path, text):
+    """Write a string to a file"""
+    with open(path, "w") as text_file:
+        print(text, file=text_file)
 
 
 def int_or_none(value):
@@ -154,10 +159,6 @@ def gen_test_data(model):
                 input_layer._outbound_nodes[0].outbound_layer, Embedding):
             random_fn = lambda size: np.random.randint(
                 0, input_layer._outbound_nodes[0].outbound_layer.input_dim, size)
-        elif input_layer._outbound_nodes and isinstance(
-                input_layer._outbound_nodes[0].outbound_layer, CategoryEncoding):
-            random_fn = lambda size: np.random.randint(
-                0, input_layer._outbound_nodes[0].outbound_layer.num_tokens, size)
         else:
             random_fn = np.random.normal
         try:
@@ -340,15 +341,6 @@ def show_dense_layer(layer):
     return result
 
 
-def show_dot_layer(layer):
-    """Check valid configuration of Dot layer"""
-    assert len(layer.input_shape) == 2
-    assert isinstance(layer.axes, int) or (isinstance(layer.axes, list) and len(layer.axes) == 2)
-    assert layer.input_shape[0][0] is None
-    assert layer.input_shape[1][0] is None
-    assert len(layer.output_shape) <= 5
-
-
 def show_prelu_layer(layer):
     """Serialize prelu layer to dict"""
     weights = layer.get_weights()
@@ -405,7 +397,7 @@ def show_gru_layer(layer):
 
 def transform_cudnn_weights(input_weights, recurrent_weights, n_gates):
     return transform_kernels(input_weights, n_gates, transform_input_kernel), \
-        transform_kernels(recurrent_weights, n_gates, transform_recurrent_kernel)
+           transform_kernels(recurrent_weights, n_gates, transform_recurrent_kernel)
 
 
 def show_cudnn_lstm_layer(layer):
@@ -499,54 +491,11 @@ def show_softmax_layer(layer):
 
 def show_normalization_layer(layer):
     """Serialize normalization layer to dict"""
-    assert len(layer.axis) <= 1, "Multiple normalization axes are not supported"
-    if len(layer.axis) == 1:
-        assert layer.axis[0] in (-1, 1, 2, 3, 4, 5), "Invalid axis for Normalization layer."
+    assert len(layer.axis) <= 1, "Multiple normalization axis are not supported"
     return {
         'mean': encode_floats(layer.mean),
         'variance': encode_floats(layer.variance)
     }
-
-
-def show_upsampling2d_layer(layer):
-    """Serialize UpSampling2D layer to dict"""
-    assert layer.interpolation in ["nearest", "bilinear"]
-
-
-def show_resizing_layer(layer):
-    """Serialize Resizing layer to dict"""
-    assert layer.interpolation in ["nearest", "bilinear", "area"]
-
-
-def show_rescaling_layer(layer):
-    """Serialize Rescaling layer to dict"""
-    assert isinstance(layer.scale, float)
-
-
-def show_category_encoding_layer(layer):
-    """Serialize CategoryEncoding layer to dict"""
-    assert layer.output_mode in ["multi_hot", "count", "one_hot"]
-
-
-def show_attention_layer(layer):
-    """Serialize Attention layer to dict"""
-    assert layer.score_mode in ["dot", "concat"]
-    data = {}
-    if layer.scale:
-        data['scale'] = float(layer.scale.numpy())
-    if layer.score_mode == "concat":
-        data['concat_score_weight'] = float(layer.concat_score_weight.numpy())
-    if data:
-        return data
-
-
-def show_additive_attention_layer(layer):
-    """Serialize AdditiveAttention layer to dict"""
-    data = {}
-    if layer.scale is not None:
-        data['scale'] = encode_floats(layer.scale.numpy())
-    if data:
-        return data
 
 
 def get_layer_functions_dict():
@@ -557,7 +506,6 @@ def get_layer_functions_dict():
         'DepthwiseConv2D': show_depthwise_conv_2d_layer,
         'BatchNormalization': show_batch_normalization_layer,
         'Dense': show_dense_layer,
-        'Dot': show_dot_layer,
         'PReLU': show_prelu_layer,
         'Embedding': show_embedding_layer,
         'LSTM': show_lstm_layer,
@@ -568,13 +516,7 @@ def get_layer_functions_dict():
         'TimeDistributed': show_time_distributed_layer,
         'Input': show_input_layer,
         'Softmax': show_softmax_layer,
-        'Normalization': show_normalization_layer,
-        'UpSampling2D': show_upsampling2d_layer,
-        'Resizing': show_resizing_layer,
-        'Rescaling': show_rescaling_layer,
-        'CategoryEncoding': show_category_encoding_layer,
-        'Attention': show_attention_layer,
-        'AdditiveAttention': show_additive_attention_layer,
+        'Normalization': show_normalization_layer
     }
 
 
@@ -652,7 +594,12 @@ def get_layer_weights(layer, name):
     result = {}
     layer_type = type(layer).__name__
     if hasattr(layer, 'data_format'):
-        assert layer.data_format == 'channels_last'
+        if layer_type in ['AveragePooling1D', 'MaxPooling1D', 'AveragePooling2D', 'MaxPooling2D',
+                          'GlobalAveragePooling1D', 'GlobalMaxPooling1D', 'GlobalAveragePooling2D',
+                          'GlobalMaxPooling2D']:
+            assert layer.data_format == 'channels_last' or layer.data_format == 'channels_first'
+        else:
+            assert layer.data_format == 'channels_last'
 
     show_func = get_layer_functions_dict().get(layer_type, None)
     shown_layer = None
@@ -849,45 +796,40 @@ def model_to_fdeep_json(model, no_tests=False):
     return json_output
 
 
-def workaround_cudnn_not_found_problem():
-    """
-    Applies a workaround for a tensorflow issue that causes a misleading
-    error about cuDNN not being found when the model contains a GRU and
-    this script is run with tensorflow-gpu on a machine with available GPUs.
-    See https://github.com/tensorflow/tensorflow/issues/36508
-    and https://github.com/keras-team/keras/issues/10634
-    """
-    gpus = tf.config.experimental.list_physical_devices('GPU')
-    for gpu in gpus:
-        tf.config.experimental.set_memory_growth(gpu, True)
-
-
 def convert(in_path, out_path, no_tests=False):
     """Convert any (h5-)stored Keras model to the frugally-deep model format."""
 
-    workaround_cudnn_not_found_problem()
-
     print('loading {}'.format(in_path))
-    model = load_model(in_path, compile=False)
+    # model = load_model(in_path)
+    model = load_model(in_path, compile=False)    
     json_output = model_to_fdeep_json(model, no_tests)
     print('writing {}'.format(out_path))
-
-    with open(out_path, 'w') as f:
-        json.dump(json_output, f, allow_nan=False, separators=(',', ':'))
+    write_text_file(out_path, json.dumps(
+        json_output, allow_nan=False, indent=2, sort_keys=True))
 
 
 def main():
     """Parse command line and convert model."""
 
-    parser = argparse.ArgumentParser(
-        prog='frugally-deep model converter',
-        description='Converts models from Keras\' .keras format to frugally-deep\'s .json format.')
-    parser.add_argument('input_path', type=str)
-    parser.add_argument('output_path', type=str)
-    parser.add_argument('--no-tests', action='store_true')
-    args = parser.parse_args()
+    usage = 'usage: [Keras model in HDF5 format] [output path] (--no-tests)'
 
-    convert(args.input_path, args.output_path, args.no_tests)
+    # todo: Use ArgumentParser instead.
+    if len(sys.argv) not in [3, 4]:
+        print(usage)
+        sys.exit(1)
+
+    in_path = sys.argv[1]
+    out_path = sys.argv[2]
+
+    no_tests = False
+    if len(sys.argv) == 4:
+        if sys.argv[3] not in ['--no-tests']:
+            print(usage)
+            sys.exit(1)
+        if sys.argv[3] == '--no-tests':
+            no_tests = True
+
+    convert(in_path, out_path, no_tests)
 
 
 if __name__ == "__main__":
