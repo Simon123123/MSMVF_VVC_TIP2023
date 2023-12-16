@@ -916,11 +916,12 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
         setMVField(4, &partitioner, &mv_field_in_4x4);
         setMVField(2, &partitioner, &mv_field_in_2x2);
 
+        int8_t bitdepth = getEncCfg()->getBitDepth(CHANNEL_TYPE_LUMA);
 
         for (int i = 0; i < 128; i++) {
           for (int j = 0; j < 128; j++) {
-            pixels_resi_in.set(0, 0, i, j, 0, ori.at(j, i) / 1024.0f);
-            pixels_resi_in.set(0, 0, i, j, 1, resi.at(j, i) / 1024.0f);
+            pixels_resi_in.set(0, 0, i, j, 0, ori.at(j, i) / float((1 << bitdepth)));
+            pixels_resi_in.set(0, 0, i, j, 1, resi.at(j, i) / float((1 << bitdepth)));
           }
         }
 
