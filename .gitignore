@@ -4,7 +4,6 @@ str.bin
 /build/
 /bin/
 /lib/
-core
 deploy
 *.sdf
 *.suo
